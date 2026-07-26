@@ -650,18 +650,31 @@ h2 {
   place-items: center;
 }
 
-.ending-screen img {
+.ending-image-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  touch-action: none;
+}
+
+.ending-image-viewport img {
   width: 100%;
   height: 100%;
   object-fit: contain;
   object-position: center;
+  transform: translate3d(var(--ending-pan-x, 0px), var(--ending-pan-y, 0px), 0) scale(var(--ending-zoom, 1));
+  transform-origin: center center;
+  user-select: none;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  will-change: transform;
 }
 
 .ending-restart {
   position: absolute;
   right: max(28px, env(safe-area-inset-right) + 24px);
   bottom: max(24px, env(safe-area-inset-bottom) + 20px);
-  z-index: 1;
+  z-index: 2;
 }
 
 .hud {
@@ -2822,7 +2835,7 @@ h2 {
     font-size: 14px;
   }
 
-  .ending-screen img {
+  .ending-image-viewport img {
     object-position: center;
   }
 

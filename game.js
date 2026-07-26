@@ -11,6 +11,8 @@
   const levelScreen = document.getElementById("levelScreen");
   const gameOverScreen = document.getElementById("gameOverScreen");
   const endingScreen = document.getElementById("endingScreen");
+  const endingImageViewport = document.getElementById("endingImageViewport");
+  const endingImage = document.getElementById("endingImage");
   const shopScreen = document.getElementById("shopScreen");
   const recordsScreen = document.getElementById("recordsScreen");
   const encyclopediaScreen = document.getElementById("encyclopediaScreen");
@@ -171,6 +173,7 @@
   let encyclopediaReturnState = "title";
   let keys = new Set();
   let pointer = { x: 0, y: 0, startX: 0, startY: 0, id: null, active: false, mode: "screen", dx: 0, dy: 0 };
+  let endingZoom = { scale: 1, x: 0, y: 0, pointers: new Map(), startScale: 1, startX: 0, startY: 0, startMidX: 0, startMidY: 0, startDistance: 1, tapX: 0, tapY: 0, tapTime: 0, lastTap: 0 };
   let gamepadInput = { mx: 0, my: 0 };
   let gamepadPrev = { buttons: [], navX: 0, navY: 0 };
   let gamepadChoiceIndex = 0;
@@ -3345,6 +3348,7 @@
     pointer.dy = 0;
     centerTouchKnob();
     resetTouchStickPosition();
+    resetEndingZoom();
     gameOverScreen.classList.add("hidden");
     endingScreen.classList.add("hidden");
     levelScreen.classList.add("hidden");
@@ -3362,6 +3366,133 @@
 
   function showEnding() {
     showEndingForClear("survive");
+  }
+
+  function clampEndingPan() {
+    if (!endingImageViewport || endingZoom.scale <= 1.01) {
+      endingZoom.x = 0;
+      endingZoom.y = 0;
+      return;
+    }
+    const rect = endingImageViewport.getBoundingClientRect();
+    const maxX = rect.width * (endingZoom.scale - 1) * 0.5;
+    const maxY = rect.height * (endingZoom.scale - 1) * 0.5;
+    endingZoom.x = clamp(endingZoom.x, -maxX, maxX);
+    endingZoom.y = clamp(endingZoom.y, -maxY, maxY);
+  }
+
+  function applyEndingZoom() {
+    if (!endingImage) return;
+    endingZoom.scale = clamp(endingZoom.scale, 1, 3.25);
+    clampEndingPan();
+    endingImage.style.setProperty("--ending-zoom", endingZoom.scale.toFixed(3));
+    endingImage.style.setProperty("--ending-pan-x", `${endingZoom.x.toFixed(1)}px`);
+    endingImage.style.setProperty("--ending-pan-y", `${endingZoom.y.toFixed(1)}px`);
+    endingScreen?.classList.toggle("ending-zoomed", endingZoom.scale > 1.01);
+  }
+
+  function resetEndingZoom() {
+    endingZoom.scale = 1;
+    endingZoom.x = 0;
+    endingZoom.y = 0;
+    endingZoom.pointers.clear();
+    applyEndingZoom();
+  }
+
+  function zoomEndingAt(clientX, clientY, scale) {
+    if (!endingImageViewport) return;
+    if (scale <= 1.01) {
+      resetEndingZoom();
+      return;
+    }
+    const rect = endingImageViewport.getBoundingClientRect();
+    endingZoom.scale = scale;
+    endingZoom.x = -(clientX - rect.left - rect.width / 2) * (scale - 1) * 0.55;
+    endingZoom.y = -(clientY - rect.top - rect.height / 2) * (scale - 1) * 0.55;
+    applyEndingZoom();
+  }
+
+  function endingPointerPair() {
+    const pointers = [...endingZoom.pointers.values()];
+    return pointers.length >= 2 ? [pointers[0], pointers[1]] : null;
+  }
+
+  function endingPairDistance(pair) {
+    return Math.hypot(pair[0].x - pair[1].x, pair[0].y - pair[1].y) || 1;
+  }
+
+  function endingPairMid(pair) {
+    return { x: (pair[0].x + pair[1].x) * 0.5, y: (pair[0].y + pair[1].y) * 0.5 };
+  }
+
+  function primeEndingZoomGesture() {
+    const pair = endingPointerPair();
+    if (pair) {
+      const mid = endingPairMid(pair);
+      endingZoom.startDistance = endingPairDistance(pair);
+      endingZoom.startScale = endingZoom.scale;
+      endingZoom.startX = endingZoom.x;
+      endingZoom.startY = endingZoom.y;
+      endingZoom.startMidX = mid.x;
+      endingZoom.startMidY = mid.y;
+      return;
+    }
+    const pointerValue = [...endingZoom.pointers.values()][0];
+    if (pointerValue) {
+      endingZoom.startScale = endingZoom.scale;
+      endingZoom.startX = endingZoom.x;
+      endingZoom.startY = endingZoom.y;
+      endingZoom.startMidX = pointerValue.x;
+      endingZoom.startMidY = pointerValue.y;
+    }
+  }
+
+  function onEndingPointerDown(event) {
+    if (state !== "ending" || event.target.closest("button")) return;
+    event.preventDefault();
+    endingImageViewport?.setPointerCapture?.(event.pointerId);
+    endingZoom.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    endingZoom.tapX = event.clientX;
+    endingZoom.tapY = event.clientY;
+    endingZoom.tapTime = performance.now();
+    primeEndingZoomGesture();
+  }
+
+  function onEndingPointerMove(event) {
+    if (!endingZoom.pointers.has(event.pointerId)) return;
+    event.preventDefault();
+    endingZoom.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    const pair = endingPointerPair();
+    if (pair) {
+      const mid = endingPairMid(pair);
+      endingZoom.scale = endingZoom.startScale * (endingPairDistance(pair) / endingZoom.startDistance);
+      endingZoom.x = endingZoom.startX + mid.x - endingZoom.startMidX;
+      endingZoom.y = endingZoom.startY + mid.y - endingZoom.startMidY;
+      applyEndingZoom();
+      return;
+    }
+    if (endingZoom.scale <= 1.01) return;
+    endingZoom.x = endingZoom.startX + event.clientX - endingZoom.startMidX;
+    endingZoom.y = endingZoom.startY + event.clientY - endingZoom.startMidY;
+    applyEndingZoom();
+  }
+
+  function onEndingPointerUp(event) {
+    if (!endingZoom.pointers.has(event.pointerId)) return;
+    event.preventDefault();
+    const now = performance.now();
+    const moved = Math.hypot(event.clientX - endingZoom.tapX, event.clientY - endingZoom.tapY);
+    const quickTap = now - endingZoom.tapTime < 260 && moved < 12 && endingZoom.pointers.size === 1;
+    endingZoom.pointers.delete(event.pointerId);
+    if (quickTap) {
+      if (now - endingZoom.lastTap < 340) {
+        zoomEndingAt(event.clientX, event.clientY, endingZoom.scale > 1.2 ? 1 : 2.25);
+        endingZoom.lastTap = 0;
+      } else {
+        endingZoom.lastTap = now;
+      }
+    }
+    primeEndingZoomGesture();
   }
 
   function clearEndingFallbackTimer() {
@@ -3387,6 +3518,7 @@
     shopScreen?.classList.add("hidden");
     recordsScreen?.classList.add("hidden");
     encyclopediaScreen?.classList.add("hidden");
+    resetEndingZoom();
     endingScreen?.classList.remove("hidden");
     try {
       if (audio) audio.stop();
@@ -3416,6 +3548,7 @@
     encyclopediaScreen?.classList.add("hidden");
     if (upgradeChoices) upgradeChoices.innerHTML = "";
     if (pauseButton) pauseButton.textContent = "ステータス";
+    resetEndingZoom();
     endingScreen?.classList.remove("hidden");
     try {
       updateHud();
@@ -6411,6 +6544,10 @@
     buyShopUpgrade(button.dataset.shopId);
   });
   restartButton.addEventListener("click", returnToTitle);
+  endingImageViewport?.addEventListener("pointerdown", onEndingPointerDown);
+  endingImageViewport?.addEventListener("pointermove", onEndingPointerMove);
+  endingImageViewport?.addEventListener("pointerup", onEndingPointerUp);
+  endingImageViewport?.addEventListener("pointercancel", onEndingPointerUp);
   endingRestartButton.addEventListener("click", showEndingResult);
   pauseButton.addEventListener("click", () => togglePause());
   pauseEncyclopediaButton?.addEventListener("click", openEncyclopedia);
