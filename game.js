@@ -70,7 +70,7 @@
   const FRAME_MS = 1000 / TARGET_FPS;
   const MAX_ENEMIES = 180;
   const MAX_PARTICLES = 120;
-  const MAX_PROJECTILES = 96;
+  const MAX_PROJECTILES = 64;
   const MAX_ENEMY_BULLETS = 20;
   const MAX_GEMS = 180;
   const MAX_FLOAT_TEXTS = 40;
@@ -4700,6 +4700,7 @@
   }
 
   function updateProjectiles(dt) {
+    const projectileCullDistance = sqr(Math.max(W, H) * 0.92 / Math.max(0.58, getCameraZoom()) + 360);
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i];
       if (p.homing) {
@@ -4717,8 +4718,8 @@
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       p.life -= dt;
-      if (p.life <= 0) {
-        if (p.area) areaDamage(p.x, p.y, p.area, p.damage * 0.85, p.color);
+      if (p.life <= 0 || d2(p, player) > projectileCullDistance) {
+        if (p.life <= 0 && p.area) areaDamage(p.x, p.y, p.area, p.damage * 0.85, p.color);
         projectiles.splice(i, 1);
         continue;
       }
@@ -5665,7 +5666,8 @@
     ctx.rotate(Math.atan2(p.vy, p.vx));
     ctx.globalCompositeOperation = "lighter";
     ctx.shadowColor = p.color;
-    ctx.shadowBlur = 20;
+    const crowdedProjectiles = projectiles.length > 42;
+    ctx.shadowBlur = crowdedProjectiles ? 8 : 20;
     const g = ctx.createLinearGradient(-18, 0, 20, 0);
     g.addColorStop(0, "rgba(255,255,255,0)");
     g.addColorStop(0.34, p.color);
@@ -5673,7 +5675,7 @@
     ctx.fillStyle = g;
     if (p.kind === "laser") {
       ctx.shadowColor = p.color;
-      ctx.shadowBlur = 28;
+      ctx.shadowBlur = crowdedProjectiles ? 12 : 28;
       ctx.strokeStyle = "rgba(255,255,255,0.96)";
       ctx.lineWidth = Math.max(4, p.r * 0.42);
       ctx.beginPath();
