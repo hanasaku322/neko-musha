@@ -636,15 +636,17 @@ h2 {
 }
 
 .ending-screen {
-  padding: 0;
+  padding: 0 !important;
   background: #050403;
   backdrop-filter: none;
+  place-items: center;
 }
 
 .ending-screen img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
+  object-position: center;
 }
 
 .ending-restart {
