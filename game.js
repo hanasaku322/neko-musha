@@ -181,6 +181,7 @@
   let enemyIntroTimer = 0;
   let enemyIntroHideTimeout = 0;
   let killSfxTimer = 0;
+  let gemCompactTimer = 0;
   let catVoiceTimer = 0;
   let clearDelay = 0;
   let clearMaxDelay = CLEAR_TRANSITION_TIME;
@@ -1373,6 +1374,7 @@
     slashes = [];
     shockwaves = [];
     killRingCooldown = 0;
+    gemCompactTimer = 0;
     puddles = [];
     furyCutin = null;
     acquiredItems = new Map();
@@ -4206,16 +4208,21 @@
       killSfxTimer = 0.08;
     }
     spawnKillEffect(enemy, boss, strongEnemy);
-    const gemCount = boss ? 15 : Math.ceil(enemy.value + 1);
+    const rawGemCount = boss ? 15 : Math.ceil(enemy.value + 1);
+    const gemPressure = gems.length / MAX_GEMS;
+    const gemPackRatio = elapsed > 480 || gemPressure > 0.75 ? 0.34 : elapsed > 180 || gemPressure > 0.55 ? 0.55 : 1;
+    const gemCount = Math.max(1, Math.ceil(rawGemCount * gemPackRatio));
+    const totalGemValue = rawGemCount * (boss ? 5 : enemy.value * 1.18) * player.xpGain;
+    const packedGemValue = totalGemValue / gemCount;
     for (let i = 0; i < gemCount && gems.length < MAX_GEMS; i++) {
       gems.push({
         x: enemy.x + rand(-16, 16),
         y: enemy.y + rand(-16, 16),
         vx: rand(-85, 85),
         vy: rand(-85, 85),
-        r: 7,
-        value: (boss ? 5 : enemy.value * 1.18) * player.xpGain,
-        color: enemy.value > 1 ? "#ffdf5a" : "#65f0df"
+        r: Math.min(13, 6 + Math.sqrt(packedGemValue) * 0.8),
+        value: packedGemValue,
+        color: packedGemValue > 4 ? "#ffdf5a" : "#65f0df"
       });
     }
     if (enemy.type === "senryoThief") {
@@ -4998,6 +5005,11 @@
   }
 
   function updateGems(dt) {
+    gemCompactTimer = Math.max(0, gemCompactTimer - dt);
+    if (gems.length > 132 && gemCompactTimer <= 0) {
+      compactGems();
+      gemCompactTimer = 0.45;
+    }
     const magnet = player.magnet;
     const magnetLimit = sqr(magnet);
     for (let i = gems.length - 1; i >= 0; i--) {
@@ -5026,6 +5038,32 @@
           else pauseForLevel();
           return;
         }
+      }
+    }
+  }
+
+  function compactGems() {
+    const mergeDistance = elapsed > 480 ? 92 : 72;
+    const limit = sqr(mergeDistance);
+    let merges = 0;
+    for (let i = gems.length - 1; i > 0 && gems.length > 112 && merges < 28; i--) {
+      const a = gems[i];
+      for (let j = i - 1; j >= 0; j--) {
+        const b = gems[j];
+        if (d2(a, b) > limit) continue;
+        const total = a.value + b.value;
+        const ax = a.x;
+        const ay = a.y;
+        b.x = (b.x * b.value + ax * a.value) / total;
+        b.y = (b.y * b.value + ay * a.value) / total;
+        b.vx = (b.vx + a.vx) * 0.42;
+        b.vy = (b.vy + a.vy) * 0.42;
+        b.value = total;
+        b.r = Math.min(15, Math.max(b.r, a.r) + 1.2);
+        b.color = total > 5 ? "#ffdf5a" : "#65f0df";
+        gems.splice(i, 1);
+        merges++;
+        break;
       }
     }
   }
@@ -5807,7 +5845,7 @@
     ctx.translate(gem.x, gem.y);
     ctx.rotate(elapsed * 4);
     ctx.shadowColor = gem.color;
-    ctx.shadowBlur = 13;
+    ctx.shadowBlur = gem.value > 8 ? 18 : 11;
     ctx.fillStyle = gem.color;
     ctx.beginPath();
     ctx.moveTo(0, -gem.r);
