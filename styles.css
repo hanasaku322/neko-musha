@@ -592,7 +592,15 @@ h2 {
   height: 48px;
   border-radius: 8px;
   background: linear-gradient(135deg, rgba(255, 220, 126, 0.2), rgba(255, 58, 78, 0.16));
-  font-size: 26px;
+  overflow: hidden;
+  font-size: 0;
+}
+
+.shop-icon img {
+  width: 118%;
+  height: 118%;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.55));
 }
 
 .shop-name {

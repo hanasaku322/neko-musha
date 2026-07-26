@@ -369,12 +369,12 @@
   const isCountLevel = level => level > 1 && level % 2 === 0;
 
   const shopUpgrades = [
-    { id: "hp", icon: "甲", name: "丈夫な胴丸", desc: "最大HPが10増える。", max: 8, baseCost: 70, growth: 1.45 },
-    { id: "damage", icon: "刀", name: "研ぎ師の砥石", desc: "基礎攻撃力が1上がる。", max: 8, baseCost: 90, growth: 1.5 },
-    { id: "speed", icon: "足", name: "軽足の草履", desc: "移動速度が少し上がる。", max: 6, baseCost: 80, growth: 1.45 },
-    { id: "magnet", icon: "招", name: "招き銭袋", desc: "経験値と拾い物を少し集めやすくなる。", max: 6, baseCost: 60, growth: 1.4 },
-    { id: "armor", icon: "鈴", name: "守りの鈴", desc: "受ける接触ダメージを軽く抑える。", max: 5, baseCost: 120, growth: 1.65 },
-    { id: "luck", icon: "福", name: "福招き札", desc: "良い拾い物が少し出やすくなる。", max: 5, baseCost: 140, growth: 1.7 }
+    { id: "hp", icon: "甲", image: "assets/shop/shop-hp-armor.png", name: "丈夫な胴丸", desc: "最大HPが10増える。", max: 8, baseCost: 70, growth: 1.45 },
+    { id: "damage", icon: "刀", image: "assets/shop/shop-damage-whetstone.png", name: "研ぎ師の砥石", desc: "基礎攻撃力が1上がる。", max: 8, baseCost: 90, growth: 1.5 },
+    { id: "speed", icon: "足", image: "assets/shop/shop-speed-sandals.png", name: "軽足の草履", desc: "移動速度が少し上がる。", max: 6, baseCost: 80, growth: 1.45 },
+    { id: "magnet", icon: "招", image: "assets/shop/shop-magnet-pouch.png", name: "招き銭袋", desc: "経験値と拾い物を少し集めやすくなる。", max: 6, baseCost: 60, growth: 1.4 },
+    { id: "armor", icon: "鈴", image: "assets/shop/shop-armor-bell.png", name: "守りの鈴", desc: "受ける接触ダメージを軽く抑える。", max: 5, baseCost: 120, growth: 1.65 },
+    { id: "luck", icon: "福", image: "assets/shop/shop-luck-talisman.png", name: "福招き札", desc: "良い拾い物が少し出やすくなる。", max: 5, baseCost: 140, growth: 1.7 }
   ];
 
   function defaultStats() {
@@ -1919,9 +1919,10 @@
       const cost = maxed ? 0 : upgradeCost(def);
       const affordable = metaSave.money >= cost;
       const label = maxed ? "最大" : `${cost}両`;
+      const icon = def.image ? `<img src="${def.image}" alt="">` : def.icon;
       return `
         <div class="shop-item${maxed ? " maxed" : ""}">
-          <div class="shop-icon">${def.icon}</div>
+          <div class="shop-icon">${icon}</div>
           <div>
             <div class="shop-name">
           <span>${displayItemName(def)}</span>
