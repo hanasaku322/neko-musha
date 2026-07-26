@@ -3202,14 +3202,14 @@ h2 {
   .title-actions #shopButton {
     min-height: calc(18px * var(--ui-scale));
     padding: calc(2px * var(--ui-scale)) calc(4px * var(--ui-scale));
-    font-size: calc(8px * var(--ui-scale));
+    font-size: calc(10px * var(--ui-scale));
   }
 
   .title-actions #recordsButton,
   .title-actions #encyclopediaButton {
     min-height: calc(15px * var(--ui-scale));
     padding: calc(2px * var(--ui-scale)) calc(4px * var(--ui-scale));
-    font-size: calc(6.8px * var(--ui-scale));
+    font-size: calc(8px * var(--ui-scale));
   }
 
   .shop-buy {
