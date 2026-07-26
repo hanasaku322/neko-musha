@@ -2667,6 +2667,25 @@ h2 {
     min-height: 150px;
   }
 
+  .encyclopedia-evolution-card {
+    min-height: 198px;
+    align-items: stretch;
+  }
+
+  .encyclopedia-evolution-card .encyclopedia-copy {
+    align-self: stretch;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .encyclopedia-evolution-card .encyclopedia-copy p {
+    line-height: 1.5;
+  }
+
+  .encyclopedia-evolution-card .encyclopedia-materials {
+    margin-top: 2px;
+  }
+
   .encyclopedia-art {
     min-height: 118px;
   }

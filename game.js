@@ -2045,8 +2045,10 @@
   }
 
   function encyclopediaItemCard(entry) {
+    const classes = ["encyclopedia-card"];
+    if (entry.isEvolution) classes.push("encyclopedia-evolution-card");
     return `
-      <article class="encyclopedia-card" style="--accent:${entry.accent || "#ffdf5a"}">
+      <article class="${classes.join(" ")}" style="--accent:${entry.accent || "#ffdf5a"}">
         <div class="encyclopedia-art">
           <span class="encyclopedia-item-icon" style="${spriteStyle(entry.sprite)}"></span>
         </div>
@@ -2117,6 +2119,7 @@
           sprite: recipe.sprite,
           typeLabel: "合成奥義",
           accent: copy.accent,
+          isEvolution: true,
           materialsHtml,
           meta: ["最高Lv同士で候補"]
         });
