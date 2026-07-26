@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <title>猫武者 - 戦国サバイバルアクション</title>
+  <meta name="description" content="隻眼の猫武者となり、戦国の夜を生き抜くサバイバルアクション。妖怪や鬼を斬り伏せ、15分の死闘を生き残れ。">
+  <meta name="theme-color" content="#08070b">
+  <meta property="og:site_name" content="猫武者">
+  <meta property="og:title" content="猫武者 - 戦国サバイバルアクション">
+  <meta property="og:description" content="捨てられた一匹の猫が、武者となり戦国の夜を生き抜く。">
+  <meta property="og:type" content="website">
+  <meta property="og:image" content="assets/neko-fury-cutin.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="猫武者 - 戦国サバイバルアクション">
+  <meta name="twitter:description" content="隻眼の猫武者となり、妖怪や鬼を斬り伏せて生き抜け。">
+  <meta name="twitter:image" content="assets/neko-fury-cutin.png">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="assets/characters/hero-samurai.png">
+  <link rel="apple-touch-icon" href="assets/characters/hero-samurai.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="shell">
+    <audio id="bgmTrack" src="assets/japanese-fight-track.wav" preload="auto" loop></audio>
+    <audio id="endingBgmTrack" src="assets/ending-valley-sunset.mp3" preload="auto" loop></audio>
+    <audio id="catMeowTrack" src="assets/cat-meow.mp3" preload="auto"></audio>
+    <audio id="catPainTrack" src="assets/cat-pain-meow.mp3" preload="auto"></audio>
+    <canvas id="game" aria-label="猫武者 game canvas"></canvas>
+
+    <section id="titleScreen" class="overlay title-screen">
+      <div class="title-story">
+        <p>これは、捨てられた一匹の猫が、<br>武者となるまでの物語。</p>
+        <p>生まれてすぐに目を病み、<br>冷たい雨の中に捨てられていた三毛猫。</p>
+        <p>その小さな命を拾ったのは、<br>若くして薄毛に悩み、人目を避けて暮らす<br>心優しき青年だった。</p>
+        <p>互いの傷を支えながら、<br>一人と一匹は、かけがえのない家族となる。</p>
+        <p>やがて三毛猫は刀を取り、<br>人々を苦しめる妖怪や鬼に立ち向かう。</p>
+        <p>世界を救うためではない。</p>
+        <p>かつての自分と同じように、<br>誰かに見つけてもらうことを待つ命を<br>守るために――。</p>
+        <p><strong>隻眼の猫武者、その旅が今始まる。</strong></p>
+      </div>
+      <div class="brand">
+        <span class="kicker">SENGOKU SURVIVAL ACTION</span>
+        <h1>猫武者</h1>
+        <p>隻眼の猫武者となり、戦国の夜を生き抜け。</p>
+      </div>
+      <div id="titleMoney" class="title-money">所持金 0両</div>
+      <div id="characterSelect" class="character-select" aria-label="操作キャラ選択"></div>
+      <div class="title-actions">
+        <button id="startButton" class="primary-button">出陣</button>
+        <button id="shopButton" class="primary-button secondary-button">武器屋</button>
+        <div id="saveSlots" class="save-slots" aria-label="セーブスロット"></div>
+        <button id="recordsButton" class="primary-button secondary-button">戦績</button>
+        <button id="encyclopediaButton" class="primary-button secondary-button">図鑑</button>
+      </div>
+      <button id="saveResetButton" class="save-reset-button">セーブリセット</button>
+      <small class="copyright">&copy;2026 HanaSaku</small>
+    </section>
+
+    <section id="shopScreen" class="overlay shop-screen hidden">
+      <div class="shop-panel">
+        <div class="shop-heading">
+          <div>
+            <span class="kicker">NEKO ARMORY</span>
+            <h2>武器屋</h2>
+          </div>
+          <b id="shopMoney">0両</b>
+        </div>
+        <p class="shop-copy">戦で得た両を使い、次の出陣に備える。</p>
+        <div id="shopStats" class="shop-stats" aria-label="現在の強化ステータス"></div>
+        <div id="shopItems" class="shop-items"></div>
+        <button id="shopCloseButton" class="primary-button">戻る</button>
+      </div>
+    </section>
+
+    <section id="recordsScreen" class="overlay records-screen hidden">
+      <div class="records-panel">
+        <span class="kicker">BATTLE RECORD</span>
+        <h2>猫武者 戦績札</h2>
+        <div id="recordsCard" class="records-card"></div>
+        <button id="recordsCloseButton" class="primary-button">タイトルへ</button>
+      </div>
+    </section>
+
+    <section id="encyclopediaScreen" class="overlay encyclopedia-screen hidden">
+      <div class="encyclopedia-panel">
+        <div class="encyclopedia-heading">
+          <div>
+            <span class="kicker">NEKO MUSHA ARCHIVE</span>
+            <h2>猫武者図鑑</h2>
+          </div>
+          <button id="encyclopediaCloseButton" class="primary-button">戻る</button>
+        </div>
+        <div id="encyclopediaTabs" class="encyclopedia-tabs" aria-label="図鑑カテゴリ">
+          <button class="active" data-encyclopedia-tab="items">秘宝</button>
+          <button data-encyclopedia-tab="evolutions">奥義</button>
+          <button data-encyclopedia-tab="enemies">キャラ</button>
+        </div>
+        <div id="encyclopediaList" class="encyclopedia-list"></div>
+      </div>
+    </section>
+
+    <section id="levelScreen" class="overlay level-screen hidden">
+      <div class="level-panel">
+        <span class="kicker">LEVEL UP</span>
+        <h2>秘宝を選択</h2>
+        <div id="upgradeChoices" class="upgrade-grid"></div>
+      </div>
+    </section>
+
+    <section id="gameOverScreen" class="overlay game-over hidden">
+      <div class="result-panel">
+        <span class="kicker">RESULT</span>
+        <h2 id="resultTitle">夜明けまで届かず</h2>
+        <p id="resultStats"></p>
+        <button id="restartButton" class="primary-button">タイトルへ</button>
+      </div>
+    </section>
+
+    <section id="endingScreen" class="overlay ending-screen hidden">
+      <img src="assets/ending-neko-musha.png" alt="猫武者 エンディング">
+      <button id="endingRestartButton" class="primary-button ending-restart">リザルトへ</button>
+    </section>
+
+    <section id="pauseScreen" class="overlay pause-screen hidden">
+      <div class="pause-panel">
+        <div class="pause-heading">
+          <div>
+            <span class="kicker">PAUSED</span>
+            <h2>戦支度</h2>
+          </div>
+          <button id="resumeButton" class="primary-button pause-resume-button">戦場へ戻る</button>
+        </div>
+        <div id="pauseStats" class="pause-stats"></div>
+        <div id="pauseItems" class="pause-items"></div>
+        <div class="pause-actions">
+          <button id="pauseEncyclopediaButton" class="primary-button secondary-button">図鑑</button>
+          <button id="pauseTitleButton" class="primary-button danger-button">タイトルへ戻る</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="hud top-left">
+      <div class="meter hp"><span id="hpBar"></span></div>
+      <div class="meter xp"><span id="xpBar"></span></div>
+      <div class="status-row">
+        <b id="levelLabel">Lv 1</b>
+        <b id="timeLabel">00:00</b>
+      </div>
+    </aside>
+
+    <aside class="hud top-right">
+      <b id="scoreLabel">0</b>
+      <span>souls</span>
+    </aside>
+
+    <button id="pauseButton" class="pause-button" aria-label="ステータスを開く" title="ステータス">ステータス</button>
+
+    <aside class="hud bottom-left">
+      <span>WASD / 矢印キー</span>
+      <b>移動</b>
+    </aside>
+
+    <aside id="itemDock" class="item-dock" aria-label="equipped items"></aside>
+
+    <div id="touchControls" class="touch-controls" aria-hidden="true">
+      <div id="touchStick" class="touch-stick">
+        <span id="touchKnob"></span>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <div id="enemyIntro" class="enemy-intro hidden"></div>
+  </main>
+
+  <script src="game.js"></script>
+</body>
+</html>

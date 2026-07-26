@@ -1,0 +1,19 @@
+{
+  "name": "猫武者 - 戦国サバイバルアクション",
+  "short_name": "猫武者",
+  "description": "隻眼の猫武者となり、戦国の夜を生き抜くサバイバルアクション。",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#08070b",
+  "theme_color": "#08070b",
+  "icons": [
+    {
+      "src": "assets/characters/hero-samurai.png",
+      "sizes": "448x588",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
