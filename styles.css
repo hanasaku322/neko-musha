@@ -2244,6 +2244,10 @@ h2 {
   left: calc(22px * var(--ui-scale));
 }
 
+.touch-stick.floating {
+  transform: translate(-50%, -50%);
+}
+
 .touch-stick span {
   position: absolute;
   left: 50%;

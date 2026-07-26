@@ -170,7 +170,7 @@
   let state = "title";
   let encyclopediaReturnState = "title";
   let keys = new Set();
-  let pointer = { x: 0, y: 0, active: false, mode: "screen", dx: 0, dy: 0 };
+  let pointer = { x: 0, y: 0, startX: 0, startY: 0, id: null, active: false, mode: "screen", dx: 0, dy: 0 };
   let gamepadInput = { mx: 0, my: 0 };
   let gamepadPrev = { buttons: [], navX: 0, navY: 0 };
   let gamepadChoiceIndex = 0;
@@ -1383,12 +1383,14 @@
     catVoiceTimer = 0;
     pointer.active = false;
     pointer.mode = "screen";
+    pointer.id = null;
     pointer.dx = 0;
     pointer.dy = 0;
     gamepadInput.mx = 0;
     gamepadInput.my = 0;
     gamepadChoiceIndex = 0;
     centerTouchKnob();
+    resetTouchStickPosition();
     toast.classList.add("hidden");
     enemyIntro.classList.add("hidden");
     if (!testMode) {
@@ -3232,9 +3234,11 @@
       state = "paused";
       keys.clear();
       pointer.active = false;
+      pointer.id = null;
       pointer.dx = 0;
       pointer.dy = 0;
       centerTouchKnob();
+      resetTouchStickPosition();
       renderPausePanel();
       pauseScreen.classList.remove("hidden");
       pauseButton.textContent = "戻る";
@@ -3323,9 +3327,11 @@
     gamepadChoiceIndex = 0;
     keys.clear();
     pointer.active = false;
+    pointer.id = null;
     pointer.dx = 0;
     pointer.dy = 0;
     centerTouchKnob();
+    resetTouchStickPosition();
     gameOverScreen.classList.add("hidden");
     endingScreen.classList.add("hidden");
     levelScreen.classList.add("hidden");
@@ -6060,6 +6066,47 @@
     if (touchKnob) touchKnob.style.transform = "translate(-50%, -50%)";
   }
 
+  function setTouchStickFloating(clientX, clientY) {
+    if (!touchStick) return;
+    touchStick.classList.add("floating");
+    touchStick.style.left = `${clientX}px`;
+    touchStick.style.top = `${clientY}px`;
+    touchStick.style.right = "auto";
+    touchStick.style.bottom = "auto";
+  }
+
+  function resetTouchStickPosition() {
+    if (!touchStick) return;
+    touchStick.classList.remove("floating");
+    touchStick.style.left = "";
+    touchStick.style.top = "";
+    touchStick.style.right = "";
+    touchStick.style.bottom = "";
+  }
+
+  function updateFloatingTouchStick(event, initial = false) {
+    if (state !== "playing") return;
+    if (initial) {
+      pointer.startX = event.clientX;
+      pointer.startY = event.clientY;
+      pointer.id = event.pointerId;
+      setTouchStickFloating(pointer.startX, pointer.startY);
+    }
+    const rect = touchStick?.getBoundingClientRect();
+    const max = Math.max(34, Math.min(rect?.width || 118, rect?.height || 118) * 0.34);
+    const rawX = event.clientX - pointer.startX;
+    const rawY = event.clientY - pointer.startY;
+    const len = Math.hypot(rawX, rawY);
+    const scale = len > max ? max / len : 1;
+    const x = rawX * scale;
+    const y = rawY * scale;
+    pointer.active = len > 8;
+    pointer.mode = "stick";
+    pointer.dx = len ? rawX / Math.max(max, len) : 0;
+    pointer.dy = len ? rawY / Math.max(max, len) : 0;
+    if (touchKnob) touchKnob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
+  }
+
   function updateTouchStick(event) {
     if (!touchStick || state !== "playing") return;
     const rect = touchStick.getBoundingClientRect();
@@ -6082,9 +6129,12 @@
   function releaseTouchStick() {
     if (pointer.mode !== "stick") return;
     pointer.active = false;
+    pointer.mode = "screen";
+    pointer.id = null;
     pointer.dx = 0;
     pointer.dy = 0;
     centerTouchKnob();
+    resetTouchStickPosition();
   }
 
   function axisWithDeadzone(value, deadzone = 0.18) {
@@ -6192,31 +6242,60 @@
   window.addEventListener("keyup", event => keys.delete(event.code));
   canvas.addEventListener("pointerdown", event => {
     if (state !== "playing") return;
+    if (event.pointerType === "touch") {
+      event.preventDefault();
+      canvas.setPointerCapture?.(event.pointerId);
+      updateFloatingTouchStick(event, true);
+      return;
+    }
     pointer.active = true;
     pointer.mode = "screen";
+    pointer.id = event.pointerId;
     pointer.x = event.clientX;
     pointer.y = event.clientY;
   });
   canvas.addEventListener("pointermove", event => {
-    if (pointer.mode === "stick") return;
+    if (pointer.id !== null && event.pointerId !== pointer.id) return;
+    if (pointer.mode === "stick") {
+      if (event.pointerType === "touch") {
+        event.preventDefault();
+        updateFloatingTouchStick(event);
+      }
+      return;
+    }
     pointer.x = event.clientX;
     pointer.y = event.clientY;
   });
-  window.addEventListener("pointerup", () => {
+  window.addEventListener("pointerup", event => {
+    if (pointer.id !== null && event.pointerId !== pointer.id) return;
     if (pointer.mode === "stick") releaseTouchStick();
-    else pointer.active = false;
+    else {
+      pointer.active = false;
+      pointer.id = null;
+    }
+  });
+  window.addEventListener("pointercancel", event => {
+    if (pointer.id !== null && event.pointerId !== pointer.id) return;
+    if (pointer.mode === "stick") releaseTouchStick();
+    else {
+      pointer.active = false;
+      pointer.id = null;
+    }
   });
   if (touchStick) {
     touchStick.addEventListener("pointerdown", event => {
       event.preventDefault();
       touchStick.setPointerCapture(event.pointerId);
+      pointer.id = event.pointerId;
       updateTouchStick(event);
     });
     touchStick.addEventListener("pointermove", event => {
+      if (pointer.id !== null && event.pointerId !== pointer.id) return;
       event.preventDefault();
       updateTouchStick(event);
     });
     touchStick.addEventListener("pointerup", event => {
+      if (pointer.id !== null && event.pointerId !== pointer.id) return;
       event.preventDefault();
       releaseTouchStick();
     });
