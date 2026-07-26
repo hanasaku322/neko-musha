@@ -2360,7 +2360,7 @@ h2 {
   }
 
   .touch-controls {
-    display: block;
+    display: none;
   }
 
   #levelLabel {
@@ -2800,7 +2800,7 @@ h2 {
   }
 
   .touch-controls {
-    display: block;
+    display: none;
   }
 
   .touch-stick {

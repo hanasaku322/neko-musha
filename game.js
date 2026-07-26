@@ -1428,6 +1428,7 @@
     const sampleCursor = {};
     const AC = window.AudioContext || window.webkitAudioContext;
     const ac = AC ? new AC() : null;
+    const noiseCache = new Map();
     const delay = ac ? ac.createDelay() : null;
     const feedback = ac ? ac.createGain() : null;
     const master = ac ? ac.createGain() : null;
@@ -1457,15 +1458,25 @@
       osc.stop(t + dur + 0.03);
     }
 
-    function noiseBurst(dur = 0.16, gain = 0.12) {
-      if (!ac) return;
+    function cachedNoiseBuffer(dur, curve = 2) {
+      if (!ac) return null;
+      const key = `${Math.round(dur * 1000)}:${curve}`;
+      const cached = noiseCache.get(key);
+      if (cached) return cached;
       const length = Math.max(1, Math.floor(ac.sampleRate * dur));
       const buffer = ac.createBuffer(1, length, ac.sampleRate);
       const data = buffer.getChannelData(0);
       for (let i = 0; i < length; i++) {
-        const falloff = 1 - i / length;
-        data[i] = (Math.random() * 2 - 1) * falloff * falloff;
+        const x = i / length;
+        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - x, curve);
       }
+      noiseCache.set(key, buffer);
+      return buffer;
+    }
+
+    function noiseBurst(dur = 0.16, gain = 0.12) {
+      if (!ac) return;
+      const buffer = cachedNoiseBuffer(dur, 2);
       const src = ac.createBufferSource();
       const filter = ac.createBiquadFilter();
       const g = ac.createGain();
@@ -1487,13 +1498,7 @@
     function sliceBurst() {
       if (!ac) return;
       const t = ac.currentTime;
-      const length = Math.max(1, Math.floor(ac.sampleRate * 0.155));
-      const buffer = ac.createBuffer(1, length, ac.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < length; i++) {
-        const x = i / length;
-        data[i] = (Math.random() * 2 - 1) * Math.pow(1 - x, 3.4);
-      }
+      const buffer = cachedNoiseBuffer(0.155, 3.4);
       const src = ac.createBufferSource();
       const filter = ac.createBiquadFilter();
       const g = ac.createGain();
@@ -4186,7 +4191,7 @@
       } catch (error) {
         audio = null;
       }
-      killSfxTimer = 0.045;
+      killSfxTimer = 0.08;
     }
     spawnKillEffect(enemy, boss, strongEnemy);
     const gemCount = boss ? 15 : Math.ceil(enemy.value + 1);
