@@ -2668,18 +2668,30 @@ h2 {
   }
 
   .encyclopedia-evolution-card {
-    min-height: 198px;
+    grid-template-columns: 68px minmax(0, 1fr);
+    min-height: 260px;
     align-items: stretch;
+    overflow: visible;
   }
 
   .encyclopedia-evolution-card .encyclopedia-copy {
     align-self: stretch;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 8px;
   }
 
   .encyclopedia-evolution-card .encyclopedia-copy p {
+    margin: 0;
     line-height: 1.5;
+  }
+
+  .encyclopedia-evolution-card .encyclopedia-art {
+    min-height: 220px;
+  }
+
+  .encyclopedia-evolution-card .encyclopedia-item-icon {
+    width: 58px;
+    height: 58px;
   }
 
   .encyclopedia-evolution-card .encyclopedia-materials {
