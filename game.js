@@ -517,6 +517,7 @@
   let texts = [];
   let slashes = [];
   let shockwaves = [];
+  let killRingCooldown = 0;
   let puddles = [];
   let furyCutin = null;
   let acquiredItems = new Map();
@@ -1371,6 +1372,7 @@
     texts = [];
     slashes = [];
     shockwaves = [];
+    killRingCooldown = 0;
     puddles = [];
     furyCutin = null;
     acquiredItems = new Map();
@@ -4186,8 +4188,7 @@
       }
       killSfxTimer = 0.045;
     }
-    burst(enemy.x, enemy.y, enemy.color, boss ? 34 : 10, boss ? 8 : 5);
-    shockwaves.push({ x: enemy.x, y: enemy.y, r: enemy.r, life: 0.34, max: 0.34, color: enemy.color, power: 0 });
+    spawnKillEffect(enemy, boss, strongEnemy);
     const gemCount = boss ? 15 : Math.ceil(enemy.value + 1);
     for (let i = 0; i < gemCount && gems.length < MAX_GEMS; i++) {
       gems.push({
@@ -4416,6 +4417,20 @@
     }
   }
 
+  function spawnKillEffect(enemy, boss, strongEnemy) {
+    const color = enemy.color || "#ffdf5a";
+    const visible = isInDrawRange(enemy, 360, getCameraZoom());
+    if (!visible && !strongEnemy) return;
+    const particleCount = boss ? 28 : strongEnemy ? 12 : 4;
+    const power = boss ? 8 : strongEnemy ? 5 : 3.5;
+    burst(enemy.x, enemy.y, color, particleCount, power);
+    const canAddRing = shockwaves.length < 18 && (strongEnemy || killRingCooldown <= 0);
+    if (!canAddRing) return;
+    const life = boss ? 0.34 : strongEnemy ? 0.28 : 0.18;
+    shockwaves.push({ x: enemy.x, y: enemy.y, r: enemy.r * (boss ? 1 : 0.75), life, max: life, color, power: 0 });
+    if (!strongEnemy) killRingCooldown = 0.075;
+  }
+
   function update(dt) {
     if (state === "clearing") {
       clearDelay -= dt;
@@ -4453,6 +4468,7 @@
     toastTimer -= dt;
     enemyIntroTimer -= dt;
     killSfxTimer = Math.max(0, killSfxTimer - dt);
+    killRingCooldown = Math.max(0, killRingCooldown - dt);
     catVoiceTimer = Math.max(0, catVoiceTimer - dt);
     if (furyCutin) {
       furyCutin.life -= dt;
@@ -5147,7 +5163,13 @@
     for (const p of projectiles) if (isInDrawRange(p, 220, zoom)) drawProjectile(p);
     for (const bullet of enemyBullets) if (isInDrawRange(bullet, 180, zoom)) drawProjectile(bullet);
     drawPlayer();
-    for (const wave of shockwaves) if (isInDrawRange(wave, 320, zoom)) drawShockwave(wave);
+    let drawnShockwaves = 0;
+    for (let i = shockwaves.length - 1; i >= 0 && drawnShockwaves < 12; i--) {
+      const wave = shockwaves[i];
+      if (!isInDrawRange(wave, 320, zoom)) continue;
+      drawShockwave(wave);
+      drawnShockwaves++;
+    }
     for (const p of particles) if (isInDrawRange(p, 160, zoom)) drawParticle(p);
     for (const t of texts) if (isInDrawRange(t, 150, zoom)) drawText(t);
     ctx.restore();
