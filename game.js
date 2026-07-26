@@ -68,10 +68,10 @@
   const FIELD_CAMERA_ZOOM_MOBILE = 0.72;
   const FIELD_CAMERA_ZOOM_TOUCH = 0.68;
   const FRAME_MS = 1000 / TARGET_FPS;
-  const MAX_ENEMIES = 230;
+  const MAX_ENEMIES = 180;
   const MAX_PARTICLES = 120;
   const MAX_PROJECTILES = 96;
-  const MAX_ENEMY_BULLETS = 32;
+  const MAX_ENEMY_BULLETS = 20;
   const MAX_GEMS = 180;
   const MAX_FLOAT_TEXTS = 40;
   const FIELD_CHEST_LIMIT = 5;
@@ -4522,11 +4522,11 @@
       const finale = elapsed >= ENDGAME_TIME;
       const ramp = clamp(elapsed / 430, 0, 1);
       const pressure = finale
-        ? Math.min(24, 12 + Math.floor((elapsed - ENDGAME_TIME) / 9) + Math.floor(player.curse * 8))
-        : Math.min(18, 3 + Math.floor(elapsed / 32) + Math.floor(ramp * 4) + Math.floor(player.curse * 5));
+        ? Math.min(19, 10 + Math.floor((elapsed - ENDGAME_TIME) / 12) + Math.floor(player.curse * 6))
+        : Math.min(15, 3 + Math.floor(elapsed / 40) + Math.floor(ramp * 3) + Math.floor(player.curse * 4));
       const budget = Math.min(pressure, MAX_ENEMIES - enemies.length);
       for (let i = 0; i < budget; i++) spawnEnemy(false);
-      spawnTimer = finale ? 0.3 : Math.max(0.42, 1.48 - wave * 0.03 - player.curse * 0.14);
+      spawnTimer = finale ? 0.36 : Math.max(0.5, 1.56 - wave * 0.025 - player.curse * 0.12);
     }
 
     if (fieldPickupTimer <= 0) {
