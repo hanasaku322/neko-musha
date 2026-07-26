@@ -2411,7 +2411,7 @@ h2 {
     justify-items: end;
     align-content: end;
     gap: 7px;
-    padding: 8px max(12px, env(safe-area-inset-right) + 8px) max(132px, env(safe-area-inset-bottom) + 118px) max(12px, env(safe-area-inset-left) + 8px);
+    padding: 8px max(12px, env(safe-area-inset-right) + 8px) max(154px, env(safe-area-inset-bottom) + 140px) max(12px, env(safe-area-inset-left) + 8px);
     text-align: right;
     background:
       linear-gradient(0deg, rgba(5, 4, 7, 0.92) 0%, rgba(5, 4, 7, 0.16) 62%),
@@ -2467,7 +2467,7 @@ h2 {
   .character-select {
     position: absolute;
     right: max(10px, env(safe-area-inset-right) + 8px);
-    bottom: max(68px, env(safe-area-inset-bottom) + 62px);
+    bottom: max(88px, env(safe-area-inset-bottom) + 82px);
     width: min(248px, calc(100vw - 20px));
     max-width: none;
     flex-direction: row;
