@@ -4168,8 +4168,17 @@
     const knock = enemy.type === "overlord" ? (unstoppable ? 2 : 10) : heavy ? 24 : 62;
     enemy.vx += Math.cos(angle) * knock;
     enemy.vy += Math.sin(angle) * knock;
-    if (texts.length < MAX_FLOAT_TEXTS && amount > 3) {
-      texts.push({ x: enemy.x, y: enemy.y - enemy.r, vy: -36, life: 0.42, max: 0.42, text: Math.round(amount), color: "#fff0a3" });
+    const showDamageNumber = enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord";
+    if (showDamageNumber && texts.length < MAX_FLOAT_TEXTS && amount > 3) {
+      const damageTextCount = texts.reduce((count, item) => count + (item.kind === "damage" ? 1 : 0), 0);
+      const lateBattle = elapsed >= 480;
+      const damageTextLimit = lateBattle ? 8 : 14;
+      const interval = enemy.type === "overlord" ? 0.13 : lateBattle ? 0.34 : 0.22;
+      const lastShown = enemy.lastDamageTextAt ?? -999;
+      if (damageTextCount < damageTextLimit && elapsed - lastShown >= interval) {
+        enemy.lastDamageTextAt = elapsed;
+        texts.push({ kind: "damage", x: enemy.x, y: enemy.y - enemy.r, vy: -36, life: 0.42, max: 0.42, text: Math.round(amount), color: "#fff0a3" });
+      }
     }
     if (chance(0.38)) burst(enemy.x, enemy.y, enemy.color, 3, 3);
     if (enemy.hp <= 0) killEnemy(enemy);
