@@ -3752,7 +3752,7 @@
     if (enemies.length >= MAX_ENEMIES || countEnemiesByType("senryoThief") > 0) return false;
     const spawn = spawnVisiblePointAroundPlayer();
     if (spawn.y < SKY_LINE_Y) spawn.y = SKY_LINE_Y + rand(70, 230);
-    const hp = 128 + player.level * 7 + elapsed * 0.32;
+    const hp = 164 + player.level * 9 + elapsed * 0.42;
     enemies.push({
       type: "senryoThief",
       x: spawn.x,
