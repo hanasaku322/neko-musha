@@ -76,13 +76,14 @@
   const MAX_ENEMY_BULLETS = 20;
   const MAX_GEMS = 180;
   const MAX_FLOAT_TEXTS = 40;
-  const PERF_MODE_ON = 2.85;
-  const PERF_MODE_HARD_ON = 3.85;
-  const PERF_MODE_OFF = 2.25;
+  const PERF_MODE_ON = 2.55;
+  const PERF_MODE_HARD_ON = 3.45;
+  const PERF_MODE_OFF = 1.95;
   const FIELD_CHEST_LIMIT = 5;
   const SAVE_KEY = "nekoMushaSave.v1";
   const SAVE_SLOT_COUNT = 2;
   const ACTIVE_SAVE_SLOT_KEY = "nekoMushaActiveSlot.v1";
+  const DEBUG_MODE = new URLSearchParams(window.location.search).has("debug");
 
   const rand = (min, max) => min + Math.random() * (max - min);
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -178,6 +179,9 @@
   let pointer = { x: 0, y: 0, startX: 0, startY: 0, id: null, active: false, mode: "screen", dx: 0, dy: 0 };
   let endingZoom = { scale: 1, x: 0, y: 0, pointers: new Map(), startScale: 1, startX: 0, startY: 0, startMidX: 0, startMidY: 0, startDistance: 1, tapX: 0, tapY: 0, tapTime: 0, lastTap: 0 };
   let perfMode = { level: 0, fps: TARGET_FPS, pressure: 0 };
+  let debugSfxCount = 0;
+  let debugSfxRate = 0;
+  let debugSfxTimer = 0;
   let gamepadInput = { mx: 0, my: 0 };
   let gamepadPrev = { buttons: [], navX: 0, navY: 0 };
   let gamepadChoiceIndex = 0;
@@ -1562,6 +1566,7 @@
         bgm.volume = value ? 0.16 : 0.42;
       },
       sfx(kind) {
+        debugSfxCount++;
         if (kind === "hit") playSample("hit", 0.55) || blip(rand(140, 220), 0.07, "sawtooth", 0.08);
         if (kind === "hurt") playSample("hurt", 0.85) || blip(120, 0.12, "sawtooth", 0.1);
         if (kind === "kill") {
@@ -5330,6 +5335,12 @@
   function updatePerformanceMode(deltaMs) {
     const instantFps = deltaMs > 0 ? clamp(1000 / deltaMs, 1, TARGET_FPS) : TARGET_FPS;
     perfMode.fps += (instantFps - perfMode.fps) * 0.08;
+    debugSfxTimer += deltaMs;
+    if (debugSfxTimer >= 1000) {
+      debugSfxRate = debugSfxCount / (debugSfxTimer / 1000);
+      debugSfxCount = 0;
+      debugSfxTimer = 0;
+    }
     const touch = navigator.maxTouchPoints > 0;
     const rawPressure =
       enemies.length / 135 +
@@ -5449,18 +5460,44 @@
     drawVignette();
     drawClearTransition();
     drawFuryCutin();
+    drawDebugOverlay();
+  }
+
+  function drawDebugOverlay() {
+    if (!DEBUG_MODE) return;
+    const lines = [
+      `FPS ${perfMode.fps.toFixed(1)} / M${perfMode.level} P${perfMode.pressure.toFixed(2)}`,
+      `敵 ${enemies.length}  弾 ${projectiles.length}+${enemyBullets.length}`,
+      `魂 ${gems.length}  粒 ${particles.length}  輪 ${shockwaves.length}`,
+      `斬 ${slashes.length}  字 ${texts.length}  音 ${debugSfxRate.toFixed(1)}/s`,
+      `DPR ${DPR.toFixed(2)}  ZOOM ${getCameraZoom().toFixed(2)}`
+    ];
+    const x = 8;
+    const y = Math.max(8, 8 + (pauseButton?.offsetHeight || 0) * 0.15);
+    const lineH = 16;
+    const w = 228;
+    const h = 12 + lines.length * lineH;
+    ctx.save();
+    ctx.globalCompositeOperation = "source-over";
+    ctx.globalAlpha = 0.82;
+    ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
+    ctx.fillRect(x, y, w, h);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#58f3e4";
+    ctx.font = "700 12px Consolas, monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "top";
+    for (let i = 0; i < lines.length; i++) ctx.fillText(lines[i], x + 8, y + 7 + i * lineH);
+    ctx.restore();
   }
 
   function drawTreasureRadar() {
     if (state !== "playing" && state !== "clearing") return;
-    const targets = pickups
-      .filter(pickup => pickup.type === "chest" || pickup.type === "heal")
-      .sort((a, b) => d2(a, player) - d2(b, player))
-      .slice(0, 9);
-    if (!targets.length) return;
     const pad = clamp(Math.min(W, H) * 0.055, 26, 46);
     const topPad = Math.max(pad, 72 * currentHudScale);
-    for (const pickup of targets) {
+    let drawn = 0;
+    for (const pickup of pickups) {
+      if (pickup.type !== "chest" && pickup.type !== "heal") continue;
       const screen = worldToScreen(pickup.x, pickup.y);
       const visible = screen.x >= pad && screen.x <= W - pad && screen.y >= topPad && screen.y <= H - pad;
       if (visible) continue;
@@ -5477,6 +5514,8 @@
         glow: tier ? tier.glow : "#7bf7df",
         color: tier ? tier.color : "#58f3e4"
       });
+      drawn++;
+      if (drawn >= 9) break;
     }
   }
 
@@ -5488,7 +5527,7 @@
     ctx.rotate(angle);
     ctx.globalCompositeOperation = "source-over";
     ctx.shadowColor = glow;
-    ctx.shadowBlur = 11;
+    ctx.shadowBlur = performanceGlow(11);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.globalAlpha = 0.82;
@@ -5724,7 +5763,7 @@
     ctx.save();
     ctx.shadowColor = "rgba(88, 243, 228, 0.55)";
     ctx.shadowBlur = 8;
-    ctx.drawImage(img, -width / 2, -height + bottomOffset, width, height);
+    drawImageRounded(img, -width / 2, -height + bottomOffset, width, height);
     ctx.restore();
     return true;
   }
@@ -5744,7 +5783,7 @@
     ctx.globalCompositeOperation = "lighter";
     ctx.shadowColor = "#7ff7ff";
     ctx.shadowBlur = 18;
-    ctx.drawImage(img, -size / 2, -size / 2, size, size);
+    drawImageRounded(img, -size / 2, -size / 2, size, size);
     ctx.restore();
   }
 
@@ -5771,7 +5810,7 @@
       const pulse = 1 + enemy.hit * 1.25 + Math.sin(elapsed * 4 + enemy.phase) * 0.035;
       const fallback = spriteCache[enemy.sprite] || spriteCache.boss;
       ctx.scale(pulse, pulse);
-      ctx.drawImage(fallback, -size / 2, -size / 2, size, size);
+      drawImageRounded(fallback, -size / 2, -size / 2, size, size);
     }
     if (enemy.hp < enemy.maxHp && (perfMode.level < 2 || isImportantEnemy(enemy))) {
       ctx.fillStyle = "rgba(0,0,0,0.42)";
@@ -5912,9 +5951,13 @@
     return 3.4;
   }
 
+  function drawImageRounded(img, x, y, w, h) {
+    ctx.drawImage(img, Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+  }
+
   function drawUprightSprite(img, height, bottomOffset) {
     const width = height * (img.naturalWidth / img.naturalHeight);
-    ctx.drawImage(img, -width / 2, -height + bottomOffset, width, height);
+    drawImageRounded(img, -width / 2, -height + bottomOffset, width, height);
   }
 
   function drawProjectile(p) {
@@ -6174,7 +6217,7 @@
     const cellH = itemAtlas.naturalHeight / ITEM_ROWS;
     const col = sprite % ITEM_COLS;
     const row = Math.floor(sprite / ITEM_COLS);
-    ctx.drawImage(itemAtlas, col * cellW, row * cellH, cellW, cellH, x, y, w, h);
+    ctx.drawImage(itemAtlas, col * cellW, row * cellH, cellW, cellH, Math.round(x), Math.round(y), Math.round(w), Math.round(h));
   }
 
   function drawParticle(p) {
