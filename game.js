@@ -5102,7 +5102,7 @@
         r: 12,
         life: 4.2,
         max: 4.2,
-        damage: 10,
+        damage: 16,
         color: "#ff4058",
         kind: "overlordBullet"
       });
