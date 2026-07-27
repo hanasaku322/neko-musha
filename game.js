@@ -657,7 +657,7 @@
       sprite: 9,
       max: 5,
       apply(level) {
-        if (level === 1 || level === 3 || level === 5) player.projectileCount += 1;
+        if (level === 1 || level === 3) player.projectileCount += 1;
         player.damage += 1;
       }
     },
@@ -3889,7 +3889,7 @@
       return;
     }
     const thunderLevel = acquiredItems.get("thunder") || 0;
-    const count = thunderLevel > 0 ? Math.min(4, Math.max(1, player.projectileCount)) : Math.max(1, player.projectileCount);
+    const count = Math.max(1, player.projectileCount);
     for (let i = 0; i < count; i++) {
       const base = player.dir;
       const spread = (i - (count - 1) / 2) * 0.11;
