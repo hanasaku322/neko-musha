@@ -10,6 +10,7 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html,
@@ -18,6 +19,11 @@ body {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  overscroll-behavior: none;
+  -webkit-text-size-adjust: 100%;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 body {
@@ -26,11 +32,16 @@ body {
     radial-gradient(circle at 84% 76%, rgba(28, 170, 146, 0.16), transparent 32%),
     linear-gradient(140deg, #090707 0%, #17100d 46%, #071414 100%);
   touch-action: none;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
   user-select: none;
 }
 
 button {
   font: inherit;
+  -webkit-user-select: none;
+  user-select: none;
+  touch-action: manipulation;
 }
 
 .shell {
@@ -46,6 +57,9 @@ button {
   width: 100%;
   height: 100%;
   image-rendering: auto;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 .overlay {

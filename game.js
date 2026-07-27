@@ -6544,7 +6544,15 @@
     gamepadPrev.navY = navY;
   }
 
+  function preventMobileSelection(event) {
+    if (event.target?.closest?.("input, textarea, [contenteditable='true']")) return;
+    event.preventDefault();
+  }
+
   window.addEventListener("resize", resize);
+  document.addEventListener("selectstart", preventMobileSelection);
+  document.addEventListener("dragstart", preventMobileSelection);
+  document.addEventListener("contextmenu", preventMobileSelection);
   window.addEventListener("keydown", event => {
     if (event.code === "KeyP" || event.code === "Escape") {
       if (state === "playing" || state === "paused" || canOpenStatusFromLevel()) {
