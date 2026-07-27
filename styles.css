@@ -1848,6 +1848,18 @@ h2 {
   background: rgba(3, 2, 2, 0.96);
 }
 
+.jackpot-screen .jackpot-cutin-image {
+  position: fixed;
+  left: 50%;
+  top: 50%;
+  z-index: 32;
+  width: min(92vw, 980px);
+  height: min(52vw, 60dvh, 430px);
+  min-height: 0;
+  transform-origin: center;
+  animation: cutinSlamFixed 980ms cubic-bezier(.12, 1.55, .22, 1) both;
+}
+
 .jackpot-cutin-image img {
   position: absolute;
   inset: 0;
@@ -1940,6 +1952,22 @@ h2 {
 
   100% {
     transform: translateX(0) skewX(0) scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes cutinSlamFixed {
+  0% {
+    transform: translate(-50%, -50%) translateX(-120%) skewX(-14deg) scale(0.92);
+    filter: brightness(1.6);
+  }
+
+  58% {
+    transform: translate(-50%, -50%) translateX(4%) skewX(-5deg) scale(1.05);
+  }
+
+  100% {
+    transform: translate(-50%, -50%) translateX(0) skewX(0) scale(1);
     filter: brightness(1);
   }
 }
