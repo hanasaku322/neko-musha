@@ -6360,13 +6360,12 @@
       const delta = now - last;
       last = now;
       updatePerformanceMode(delta);
-      frameCarry += delta;
+      frameCarry += Math.min(delta, FRAME_MS * 2);
       if (frameCarry >= FRAME_MS) {
-        const steps = Math.min(3, Math.floor(frameCarry / FRAME_MS));
-        frameCarry -= steps * FRAME_MS;
+        frameCarry = 0;
         const dt = FRAME_MS / 1000;
         updateGamepadInput();
-        for (let i = 0; i < steps; i++) update(dt);
+        update(dt);
         draw();
       }
     } catch (error) {
