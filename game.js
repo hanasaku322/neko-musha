@@ -657,7 +657,7 @@
       sprite: 9,
       max: 5,
       apply(level) {
-        if (level === 1 || level === 3 || level === 5) player.projectileCount += 1;
+        if (level === 1) player.projectileCount += 1;
         player.damage += 1;
       }
     },
@@ -3888,7 +3888,8 @@
       shootDenkichiLaser();
       return;
     }
-    const count = Math.max(1, player.projectileCount);
+    const thunderLevel = acquiredItems.get("thunder") || 0;
+    const count = thunderLevel > 0 ? Math.min(2, Math.max(1, player.projectileCount)) : Math.max(1, player.projectileCount);
     for (let i = 0; i < count; i++) {
       const base = player.dir;
       const spread = (i - (count - 1) / 2) * 0.11;
@@ -3905,7 +3906,8 @@
         life: 0.92 * player.duration,
         damage: scaledDamage(player.damage * (crit ? 1.8 : 1)),
         color: crit ? "#ffdf5a" : "#5fe8e2",
-        pierce: (crit ? 1 : 0) + player.extraPierce
+        pierce: (crit ? 1 : 0) + player.extraPierce,
+        kind: thunderLevel > 0 ? "thunder" : "bullet"
       });
     }
     if (chance(0.3) && audio) audio.sfx("slash");
@@ -5979,6 +5981,10 @@
         ctx.lineTo(8, 7);
         ctx.closePath();
         ctx.fill();
+      } else if (p.kind === "thunder") {
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r * 1.05, 0, TAU);
+        ctx.fill();
       } else {
         ctx.beginPath();
         ctx.ellipse(0, 0, p.r * 2.15, p.r * 0.66, 0, 0, TAU);
@@ -6017,6 +6023,22 @@
       ctx.lineTo(28, -p.r * 0.16);
       ctx.moveTo(-22, p.r * 0.85);
       ctx.lineTo(28, p.r * 0.16);
+      ctx.stroke();
+    } else if (p.kind === "thunder") {
+      const radius = p.r * (1.04 + Math.sin(elapsed * 18) * 0.04);
+      const orb = ctx.createRadialGradient(-radius * 0.28, -radius * 0.32, 1, 0, 0, radius * 1.28);
+      orb.addColorStop(0, "#ffffff");
+      orb.addColorStop(0.34, p.color);
+      orb.addColorStop(0.72, "rgba(88, 243, 228, 0.58)");
+      orb.addColorStop(1, "rgba(88, 243, 228, 0)");
+      ctx.fillStyle = orb;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 1.22, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.72)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, radius * 0.72, 0, TAU);
       ctx.stroke();
     } else if (p.kind === "crane") {
       ctx.beginPath();
