@@ -1133,7 +1133,7 @@
     const longSide = Math.max(W, H);
     const compactScreen = shortSide <= 720 || longSide <= 1180;
     const dprCap = touch ? (touchLandscape ? 1.18 : 1.28) : (compactScreen ? 1.5 : 1.75);
-    const resolutionCap = Math.min(1280 / longSide, 720 / shortSide);
+    const resolutionCap = touch ? 720 / longSide : Infinity;
     DPR = Math.min(dprCap, rawDpr, resolutionCap);
     canvas.width = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
