@@ -3888,7 +3888,6 @@
       shootDenkichiLaser();
       return;
     }
-    const thunderLevel = acquiredItems.get("thunder") || 0;
     const count = Math.max(1, player.projectileCount);
     for (let i = 0; i < count; i++) {
       const base = player.dir;
@@ -3907,7 +3906,7 @@
         damage: scaledDamage(player.damage * (crit ? 1.8 : 1)),
         color: crit ? "#ffdf5a" : "#5fe8e2",
         pierce: (crit ? 1 : 0) + player.extraPierce,
-        kind: thunderLevel > 0 ? "thunder" : "bullet"
+        kind: "bullet"
       });
     }
     if (chance(0.3) && audio) audio.sfx("slash");
