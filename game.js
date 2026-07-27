@@ -657,7 +657,7 @@
       sprite: 9,
       max: 5,
       apply(level) {
-        if (level === 1) player.projectileCount += 1;
+        if (level === 1 || level === 3 || level === 5) player.projectileCount += 1;
         player.damage += 1;
       }
     },
@@ -3889,7 +3889,7 @@
       return;
     }
     const thunderLevel = acquiredItems.get("thunder") || 0;
-    const count = thunderLevel > 0 ? Math.min(2, Math.max(1, player.projectileCount)) : Math.max(1, player.projectileCount);
+    const count = thunderLevel > 0 ? Math.min(4, Math.max(1, player.projectileCount)) : Math.max(1, player.projectileCount);
     for (let i = 0; i < count; i++) {
       const base = player.dir;
       const spread = (i - (count - 1) / 2) * 0.11;
@@ -4918,16 +4918,23 @@
       }
       if (puddle.tick > 0) continue;
       puddle.tick = 0.24;
-      const limit = sqr(puddle.r);
       for (const enemy of enemies) {
-        const dx = enemy.x - puddle.x;
-        const dy = enemy.y - puddle.y;
-        if (dx * dx + dy * dy < limit) {
+        if (isEnemyInPuddle(enemy, puddle)) {
+          const dx = enemy.x - puddle.x;
+          const dy = enemy.y - puddle.y;
           enemy.slow = Math.max(enemy.slow, 0.42);
           damageEnemy(enemy, puddle.damage, Math.atan2(dy, dx));
         }
       }
     }
+  }
+
+  function isEnemyInPuddle(enemy, puddle) {
+    const dx = enemy.x - puddle.x;
+    const dy = enemy.y - puddle.y;
+    const rx = puddle.r + enemy.r * 0.45;
+    const ry = puddle.r * 0.58 + enemy.r * 0.32;
+    return (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) < 1;
   }
 
   function getProjectileHitRadius(p) {
