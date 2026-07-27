@@ -76,6 +76,9 @@
   const MAX_ENEMY_BULLETS = 20;
   const MAX_GEMS = 180;
   const MAX_FLOAT_TEXTS = 40;
+  const PERF_MODE_ON = 2.85;
+  const PERF_MODE_HARD_ON = 3.85;
+  const PERF_MODE_OFF = 2.25;
   const FIELD_CHEST_LIMIT = 5;
   const SAVE_KEY = "nekoMushaSave.v1";
   const SAVE_SLOT_COUNT = 2;
@@ -174,6 +177,7 @@
   let keys = new Set();
   let pointer = { x: 0, y: 0, startX: 0, startY: 0, id: null, active: false, mode: "screen", dx: 0, dy: 0 };
   let endingZoom = { scale: 1, x: 0, y: 0, pointers: new Map(), startScale: 1, startX: 0, startY: 0, startMidX: 0, startMidY: 0, startDistance: 1, tapX: 0, tapY: 0, tapTime: 0, lastTap: 0 };
+  let perfMode = { level: 0, fps: TARGET_FPS, pressure: 0 };
   let gamepadInput = { mx: 0, my: 0 };
   let gamepadPrev = { buttons: [], navX: 0, navY: 0 };
   let gamepadChoiceIndex = 0;
@@ -4333,13 +4337,13 @@
     const strongEnemy = enemy.type === "armored" || enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord";
     const chestEnemy = enemy.type === "armored" || enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord";
     if (strongEnemy) camera.shake = Math.max(camera.shake, enemy.type === "overlord" ? 12 : boss ? 10 : 4);
-    if (audio && killSfxTimer <= 0) {
+    if (audio && killSfxTimer <= 0 && (perfMode.level < 2 || strongEnemy)) {
       try {
         audio.sfx("kill");
       } catch (error) {
         audio = null;
       }
-      killSfxTimer = 0.08;
+      killSfxTimer = perfMode.level >= 2 ? 0.18 : perfMode.level >= 1 ? 0.12 : 0.08;
     }
     spawnKillEffect(enemy, boss, strongEnemy);
     const rawGemCount = boss ? 15 : Math.ceil(enemy.value + 1);
@@ -4558,10 +4562,12 @@
   }
 
   function burst(x, y, color, count, power) {
-    for (let i = 0; i < count; i++) {
+    const adjustedCount = perfMode.level >= 2 ? Math.ceil(count * 0.45) : perfMode.level >= 1 ? Math.ceil(count * 0.7) : count;
+    const adjustedPower = perfMode.level >= 2 ? power * 0.84 : power;
+    for (let i = 0; i < adjustedCount; i++) {
       if (particles.length >= MAX_PARTICLES) particles.shift();
       const a = rand(0, TAU);
-      const s = rand(40, 58 * power);
+      const s = rand(40, 58 * adjustedPower);
       particles.push({
         x,
         y,
@@ -4569,7 +4575,7 @@
         vy: Math.sin(a) * s,
         life: rand(0.2, 0.52),
         max: 0.52,
-        r: rand(2.4, power),
+        r: rand(2.4, adjustedPower),
         color
       });
     }
@@ -4579,14 +4585,16 @@
     const color = enemy.color || "#ffdf5a";
     const visible = isInDrawRange(enemy, 360, getCameraZoom());
     if (!visible && !strongEnemy) return;
-    const particleCount = boss ? 28 : strongEnemy ? 12 : 4;
+    if (perfMode.level >= 2 && !strongEnemy && kills % 3 !== 0) return;
+    const particleCount = boss ? 28 : strongEnemy ? 12 : perfMode.level >= 1 ? 2 : 4;
     const power = boss ? 8 : strongEnemy ? 5 : 3.5;
     burst(enemy.x, enemy.y, color, particleCount, power);
-    const canAddRing = shockwaves.length < 18 && (strongEnemy || killRingCooldown <= 0);
+    const ringLimit = perfMode.level >= 2 ? 8 : perfMode.level >= 1 ? 12 : 18;
+    const canAddRing = shockwaves.length < ringLimit && (strongEnemy || killRingCooldown <= 0);
     if (!canAddRing) return;
     const life = boss ? 0.34 : strongEnemy ? 0.28 : 0.18;
     shockwaves.push({ x: enemy.x, y: enemy.y, r: enemy.r * (boss ? 1 : 0.75), life, max: life, color, power: 0 });
-    if (!strongEnemy) killRingCooldown = 0.075;
+    if (!strongEnemy) killRingCooldown = perfMode.level >= 2 ? 0.16 : perfMode.level >= 1 ? 0.11 : 0.075;
   }
 
   function update(dt) {
@@ -4696,6 +4704,7 @@
     updateGems(dt);
     updatePickups(dt);
     compactDistantEnemies();
+    trimVisualLoad();
 
     updateList(particles, dt, item => {
       item.x += item.vx * dt;
@@ -5140,9 +5149,10 @@
 
   function updateGems(dt) {
     gemCompactTimer = Math.max(0, gemCompactTimer - dt);
-    if (gems.length > 132 && gemCompactTimer <= 0) {
+    const compactThreshold = perfMode.level >= 2 ? 104 : perfMode.level >= 1 ? 120 : 132;
+    if (gems.length > compactThreshold && gemCompactTimer <= 0) {
       compactGems();
-      gemCompactTimer = 0.45;
+      gemCompactTimer = perfMode.level >= 2 ? 0.28 : 0.45;
     }
     const magnet = player.magnet;
     const magnetLimit = sqr(magnet);
@@ -5177,10 +5187,12 @@
   }
 
   function compactGems() {
-    const mergeDistance = elapsed > 480 ? 92 : 72;
+    const mergeDistance = perfMode.level >= 2 ? 108 : elapsed > 480 ? 92 : 72;
     const limit = sqr(mergeDistance);
     let merges = 0;
-    for (let i = gems.length - 1; i > 0 && gems.length > 112 && merges < 28; i--) {
+    const targetCount = perfMode.level >= 2 ? 88 : 112;
+    const mergeLimit = perfMode.level >= 2 ? 42 : 28;
+    for (let i = gems.length - 1; i > 0 && gems.length > targetCount && merges < mergeLimit; i--) {
       const a = gems[i];
       for (let j = i - 1; j >= 0; j--) {
         const b = gems[j];
@@ -5278,6 +5290,26 @@
     }
   }
 
+  function trimVisualLoad() {
+    if (perfMode.level <= 0) return;
+    const particleLimit = perfMode.level >= 2 ? 72 : 96;
+    const shockwaveLimit = perfMode.level >= 2 ? 8 : 12;
+    const textLimit = perfMode.level >= 2 ? 20 : 30;
+    if (particles.length > particleLimit) particles.splice(0, particles.length - particleLimit);
+    if (shockwaves.length > shockwaveLimit) shockwaves.splice(0, shockwaves.length - shockwaveLimit);
+    if (texts.length > textLimit) {
+      let removeCount = texts.length - textLimit;
+      for (let i = 0; i < texts.length && removeCount > 0; i++) {
+        if (texts[i].kind === "damage") {
+          texts.splice(i, 1);
+          i--;
+          removeCount--;
+        }
+      }
+      if (texts.length > textLimit) texts.splice(0, texts.length - textLimit);
+    }
+  }
+
   function updateList(list, dt, fn = null) {
     for (let i = list.length - 1; i >= 0; i--) {
       const item = list[i];
@@ -5293,6 +5325,46 @@
     levelLabel.textContent = `Lv ${player.level}`;
     timeLabel.textContent = formatClock(elapsed);
     scoreLabel.textContent = score.toString();
+  }
+
+  function updatePerformanceMode(deltaMs) {
+    const instantFps = deltaMs > 0 ? clamp(1000 / deltaMs, 1, TARGET_FPS) : TARGET_FPS;
+    perfMode.fps += (instantFps - perfMode.fps) * 0.08;
+    const touch = navigator.maxTouchPoints > 0;
+    const rawPressure =
+      enemies.length / 135 +
+      projectiles.length / 54 +
+      enemyBullets.length / 18 +
+      gems.length / 150 +
+      particles.length / 95 +
+      shockwaves.length / 12 +
+      slashes.length / 18 +
+      texts.length / 32;
+    const lateBoost = elapsed >= ENDGAME_TIME ? 0.34 : elapsed > 480 ? 0.16 : 0;
+    const fpsBoost = perfMode.fps < 22 ? 1.05 : perfMode.fps < 25 ? 0.64 : perfMode.fps < 28 ? 0.25 : 0;
+    const touchBoost = touch ? 0.18 : 0;
+    const targetPressure = rawPressure + lateBoost + fpsBoost + touchBoost;
+    perfMode.pressure += (targetPressure - perfMode.pressure) * 0.12;
+    if (perfMode.pressure >= PERF_MODE_HARD_ON || perfMode.fps < 21) perfMode.level = 2;
+    else if (perfMode.pressure >= PERF_MODE_ON || perfMode.fps < 25) perfMode.level = Math.max(perfMode.level, 1);
+    else if (perfMode.pressure <= PERF_MODE_OFF && perfMode.fps > 27) perfMode.level = 0;
+    else if (perfMode.level === 2 && perfMode.pressure < PERF_MODE_ON && perfMode.fps > 24) perfMode.level = 1;
+  }
+
+  function performanceDrawMargin(base) {
+    if (perfMode.level >= 2) return base * 0.58;
+    if (perfMode.level >= 1) return base * 0.76;
+    return base;
+  }
+
+  function performanceGlow(base) {
+    if (perfMode.level >= 2) return base * 0.36;
+    if (perfMode.level >= 1) return base * 0.62;
+    return base;
+  }
+
+  function isImportantEnemy(enemy) {
+    return enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord" || enemy.type === "senryoThief";
   }
 
   function getCameraZoom() {
@@ -5345,22 +5417,32 @@
     ctx.scale(zoom, zoom);
     ctx.translate(-camera.x, -camera.y);
     drawArena();
-    for (const gem of gems) if (isInDrawRange(gem, 90, zoom)) drawGem(gem);
+    const gemMargin = performanceDrawMargin(90);
+    for (let i = 0; i < gems.length; i++) {
+      const gem = gems[i];
+      if (perfMode.level >= 2 && gem.value <= 4 && i % 2) continue;
+      if (isInDrawRange(gem, gemMargin, zoom)) drawGem(gem);
+    }
     for (const pickup of pickups) if (isInDrawRange(pickup, 120, zoom)) drawPickup(pickup);
-    for (const puddle of puddles) if (isInDrawRange(puddle, 260, zoom)) drawPuddle(puddle);
-    for (const enemy of enemies) if (isInDrawRange(enemy, 260, zoom)) drawEnemy(enemy);
-    for (const slash of slashes) if (isInDrawRange(slash, 280, zoom)) drawSlash(slash);
-    for (const p of projectiles) if (isInDrawRange(p, 220, zoom)) drawProjectile(p);
-    for (const bullet of enemyBullets) if (isInDrawRange(bullet, 180, zoom)) drawProjectile(bullet);
+    for (const puddle of puddles) if (isInDrawRange(puddle, performanceDrawMargin(260), zoom)) drawPuddle(puddle);
+    for (const enemy of enemies) if (isInDrawRange(enemy, performanceDrawMargin(isImportantEnemy(enemy) ? 260 : 190), zoom)) drawEnemy(enemy);
+    for (const slash of slashes) if (isInDrawRange(slash, performanceDrawMargin(280), zoom)) drawSlash(slash);
+    for (const p of projectiles) if (isInDrawRange(p, performanceDrawMargin(220), zoom)) drawProjectile(p);
+    for (const bullet of enemyBullets) if (isInDrawRange(bullet, performanceDrawMargin(180), zoom)) drawProjectile(bullet);
     drawPlayer();
     let drawnShockwaves = 0;
-    for (let i = shockwaves.length - 1; i >= 0 && drawnShockwaves < 12; i--) {
+    const shockwaveLimit = perfMode.level >= 2 ? 6 : perfMode.level >= 1 ? 9 : 12;
+    for (let i = shockwaves.length - 1; i >= 0 && drawnShockwaves < shockwaveLimit; i--) {
       const wave = shockwaves[i];
-      if (!isInDrawRange(wave, 320, zoom)) continue;
+      if (!isInDrawRange(wave, performanceDrawMargin(320), zoom)) continue;
       drawShockwave(wave);
       drawnShockwaves++;
     }
-    for (const p of particles) if (isInDrawRange(p, 160, zoom)) drawParticle(p);
+    for (let i = 0; i < particles.length; i++) {
+      if (perfMode.level >= 2 && i % 2) continue;
+      const p = particles[i];
+      if (isInDrawRange(p, performanceDrawMargin(160), zoom)) drawParticle(p);
+    }
     for (const t of texts) if (isInDrawRange(t, 150, zoom)) drawText(t);
     ctx.restore();
     drawTreasureRadar();
@@ -5676,13 +5758,13 @@
     if (isImageReady(sprite)) {
       const height = isBoss ? enemy.r * 4.25 : enemy.r * 4.55;
       const bottomOffset = enemy.r * 1.35;
-      drawEnemyGroundShadow(enemy);
+      if (perfMode.level < 2 || isImportantEnemy(enemy)) drawEnemyGroundShadow(enemy);
       ctx.save();
       applyEnemyMotion(enemy);
       const pulse = 1 + enemy.hit * 1.25 + Math.sin(elapsed * 4 + enemy.phase) * 0.035;
       ctx.scale(pulse, pulse);
       if (enemy.x < player.x) ctx.scale(-1, 1);
-      drawEnemyMotionTrail(enemy, sprite, height, bottomOffset);
+      if (perfMode.level < 2 || isImportantEnemy(enemy)) drawEnemyMotionTrail(enemy, sprite, height, bottomOffset);
       drawUprightSprite(sprite, height, bottomOffset);
       ctx.restore();
     } else {
@@ -5691,7 +5773,7 @@
       ctx.scale(pulse, pulse);
       ctx.drawImage(fallback, -size / 2, -size / 2, size, size);
     }
-    if (enemy.hp < enemy.maxHp) {
+    if (enemy.hp < enemy.maxHp && (perfMode.level < 2 || isImportantEnemy(enemy))) {
       ctx.fillStyle = "rgba(0,0,0,0.42)";
       ctx.fillRect(-enemy.r, -enemy.r - 14, enemy.r * 2, 4);
       ctx.fillStyle = "#ffdf5a";
@@ -5842,7 +5924,27 @@
     ctx.globalCompositeOperation = "lighter";
     ctx.shadowColor = p.color;
     const crowdedProjectiles = projectiles.length > 42;
-    ctx.shadowBlur = crowdedProjectiles ? 8 : 20;
+    if (perfMode.level >= 2 && p.kind !== "laser" && p.kind !== "sickle") {
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = p.color;
+      if (p.kind === "arrow") {
+        ctx.fillRect(-18, -2, 32, 4);
+        ctx.beginPath();
+        ctx.moveTo(20, 0);
+        ctx.lineTo(8, -7);
+        ctx.lineTo(10, 0);
+        ctx.lineTo(8, 7);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.r * 2.15, p.r * 0.66, 0, 0, TAU);
+        ctx.fill();
+      }
+      ctx.restore();
+      return;
+    }
+    ctx.shadowBlur = performanceGlow(crowdedProjectiles ? 8 : 20);
     const g = ctx.createLinearGradient(-18, 0, 20, 0);
     g.addColorStop(0, "rgba(255,255,255,0)");
     g.addColorStop(0.34, p.color);
@@ -5850,7 +5952,7 @@
     ctx.fillStyle = g;
     if (p.kind === "laser") {
       ctx.shadowColor = p.color;
-      ctx.shadowBlur = crowdedProjectiles ? 12 : 28;
+      ctx.shadowBlur = performanceGlow(crowdedProjectiles ? 12 : 28);
       ctx.strokeStyle = "rgba(255,255,255,0.96)";
       ctx.lineWidth = Math.max(4, p.r * 0.42);
       ctx.beginPath();
@@ -5938,7 +6040,7 @@
 
     ctx.globalAlpha = alpha * 0.94;
     ctx.shadowColor = edge;
-    ctx.shadowBlur = slash.color ? 38 : 30;
+    ctx.shadowBlur = performanceGlow(slash.color ? 38 : 30);
     ctx.lineCap = "round";
     const blade = ctx.createLinearGradient(inner, -outer * 0.2, outer, outer * 0.14);
     blade.addColorStop(0, "rgba(255,255,255,0.08)");
@@ -5953,7 +6055,7 @@
 
     ctx.globalAlpha = alpha;
     ctx.shadowColor = "#fff8d8";
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = performanceGlow(18);
     ctx.strokeStyle = "rgba(255, 255, 245, 0.96)";
     ctx.lineWidth = slash.color ? 8 : 6;
     ctx.beginPath();
@@ -5962,9 +6064,10 @@
 
     ctx.fillStyle = "#fff2a8";
     ctx.shadowColor = "#ff3b4f";
-    ctx.shadowBlur = 12;
-    for (let i = 0; i < 7; i++) {
-      const a = -sweep + (i / 6) * sweep * 2;
+    ctx.shadowBlur = performanceGlow(12);
+    const sparkCount = perfMode.level >= 2 ? 3 : perfMode.level >= 1 ? 5 : 7;
+    for (let i = 0; i < sparkCount; i++) {
+      const a = -sweep + (i / Math.max(1, sparkCount - 1)) * sweep * 2;
       const r = tip + 8 + Math.sin(i * 2.1 + t * 5) * 12;
       ctx.globalAlpha = alpha * (0.32 + i * 0.045);
       ctx.beginPath();
@@ -5979,7 +6082,7 @@
     ctx.translate(gem.x, gem.y);
     ctx.rotate(elapsed * 4);
     ctx.shadowColor = gem.color;
-    ctx.shadowBlur = gem.value > 8 ? 18 : 11;
+    ctx.shadowBlur = performanceGlow(gem.value > 8 ? 18 : 11);
     ctx.fillStyle = gem.color;
     ctx.beginPath();
     ctx.moveTo(0, -gem.r);
@@ -5999,7 +6102,7 @@
     ctx.save();
     ctx.translate(pickup.x, pickup.y + bob);
     ctx.shadowColor = fury ? "#ff304f" : chest ? chest.glow : "#62f0d8";
-    ctx.shadowBlur = fury ? 30 : 18;
+    ctx.shadowBlur = performanceGlow(fury ? 30 : 18);
     ctx.fillStyle = "rgba(5, 8, 12, 0.72)";
     ctx.beginPath();
     ctx.arc(0, 0, pickup.r + 5, 0, TAU);
@@ -6081,7 +6184,7 @@
     ctx.globalAlpha = a;
     ctx.fillStyle = p.color;
     ctx.shadowColor = p.color;
-    ctx.shadowBlur = 14;
+    ctx.shadowBlur = performanceGlow(14);
     ctx.beginPath();
     ctx.arc(p.x, p.y, p.r * (1.35 - a * 0.35), 0, TAU);
     ctx.fill();
@@ -6096,7 +6199,7 @@
     ctx.strokeStyle = wave.color;
     ctx.lineWidth = 5 * (1 - t);
     ctx.shadowColor = wave.color;
-    ctx.shadowBlur = 18;
+    ctx.shadowBlur = performanceGlow(18);
     ctx.beginPath();
     ctx.arc(wave.x, wave.y, wave.r + t * 145, 0, TAU);
     ctx.stroke();
@@ -6256,6 +6359,7 @@
     try {
       const delta = now - last;
       last = now;
+      updatePerformanceMode(delta);
       frameCarry += delta;
       if (frameCarry >= FRAME_MS) {
         const steps = Math.min(3, Math.floor(frameCarry / FRAME_MS));
