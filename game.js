@@ -1129,16 +1129,17 @@
     H = Math.max(320, window.innerHeight);
     const touch = navigator.maxTouchPoints > 0;
     const touchLandscape = touch && W > H;
-    const compactScreen = Math.min(W, H) <= 720 || Math.max(W, H) <= 1180;
+    const shortSide = Math.min(W, H);
+    const longSide = Math.max(W, H);
+    const compactScreen = shortSide <= 720 || longSide <= 1180;
     const dprCap = touch ? (touchLandscape ? 1.18 : 1.28) : (compactScreen ? 1.5 : 1.75);
-    DPR = Math.min(dprCap, rawDpr);
+    const resolutionCap = Math.min(1280 / longSide, 720 / shortSide);
+    DPR = Math.min(dprCap, rawDpr, resolutionCap);
     canvas.width = Math.floor(W * DPR);
     canvas.height = Math.floor(H * DPR);
     canvas.style.width = `${W}px`;
     canvas.style.height = `${H}px`;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    const shortSide = Math.min(W, H);
-    const longSide = Math.max(W, H);
     const uiScale = touch
       ? clamp(shortSide / 560, 0.68, 0.94)
       : clamp(shortSide / 720, 0.86, 1);
