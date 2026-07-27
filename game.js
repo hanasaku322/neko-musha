@@ -3773,8 +3773,8 @@
       shootCd: 0,
       slow: 0,
       phase: rand(0, TAU),
-      visibleLife: 7.5,
-      escapeLife: 23 + rand(0, 4),
+      visibleLife: 10,
+      escapeLife: 10,
       sparkleCd: 0,
       thiefWorth: Math.round(22 + player.level * 1.4 + Math.min(42, elapsed / 22))
     });
