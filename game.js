@@ -4255,7 +4255,7 @@
     const powerLevel = clamp(evolved ? player.sake - 3 : player.sake, 1, 5);
     const count = evolved ? 12 : clamp(sakeLevel + 1, 2, 10);
     const areaMul = Math.min(player.area, evolved ? 1.18 : 1.12);
-    const ring = (evolved ? 108 + sakeLevel * 15 : 58 + sakeLevel * 14) * areaMul;
+    const ring = (evolved ? 142 + sakeLevel * 20 : 82 + sakeLevel * 18) * areaMul;
     const puddleRadius = (evolved ? 42 + sakeLevel * 5 : 27 + sakeLevel * 4.4) * areaMul;
     const puddleDamage = scaledDamage(player.damage * (evolved ? 0.12 + powerLevel * 0.018 : 0.08 + powerLevel * 0.014));
     for (let i = 0; i < count; i++) {
