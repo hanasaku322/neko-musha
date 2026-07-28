@@ -907,7 +907,7 @@
       id: "sake",
       type: "active",
       name: "清め酒",
-      desc: "敵の足元へ清めの沼を撒き、しばらく範囲ダメージを与える。",
+      desc: "周囲へ清めの沼を撒き、しばらく範囲ダメージを与える。",
       sprite: 29,
       max: 5,
       apply(level) {
@@ -1023,7 +1023,7 @@
       name: "奥義・清酒霊泉G",
       requires: ["sake", "gourd"],
       sprite: 36,
-      desc: "清め酒の沼が広がり、回復力も上がる。",
+      desc: "清め酒の霊泉が広がり、回復力も上がる。",
       apply() {
         player.sake += 3;
         player.area += 0.14;
@@ -4240,9 +4240,13 @@
   }
 
   function doPurifyingSake() {
-    const count = 1 + Math.floor(player.sake / 2);
     const evolved = evolvedItems.has("pureFlood");
-    const ring = (64 + player.sake * 15) * Math.min(player.area, 1.34);
+    const baseLevel = clamp(evolved ? player.sake - 3 : player.sake, 1, 5);
+    const count = evolved ? 12 : clamp(2 + (baseLevel - 1) * 2, 2, 10);
+    const areaMul = Math.min(player.area, evolved ? 1.18 : 1.12);
+    const ring = (evolved ? 62 + baseLevel * 9 : 36 + baseLevel * 8) * areaMul;
+    const puddleRadius = (evolved ? 24 + baseLevel * 3 : 16 + baseLevel * 2.4) * areaMul;
+    const puddleDamage = scaledDamage(player.damage * (evolved ? 0.12 + baseLevel * 0.018 : 0.08 + baseLevel * 0.014));
     for (let i = 0; i < count; i++) {
       const angle = i * TAU / Math.max(1, count) + elapsed * 0.18;
       const x = player.x + Math.cos(angle) * ring;
@@ -4250,11 +4254,11 @@
       puddles.push({
         x,
         y,
-        r: (32 + player.sake * 4) * Math.min(player.area, 1.32),
+        r: puddleRadius,
         life: 3.2 + player.sake * 0.22,
         max: 3.2 + player.sake * 0.22,
         tick: 0,
-        damage: scaledDamage(player.damage * (0.22 + player.sake * 0.035)),
+        damage: puddleDamage,
         color: evolved ? "#7ff7ff" : "#6fc8ff",
         kind: evolved ? "pureFlood" : "sake"
       });
