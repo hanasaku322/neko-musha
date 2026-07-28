@@ -4719,9 +4719,10 @@
       const wave = 1 + Math.floor(elapsed / 26);
       const finale = elapsed >= ENDGAME_TIME;
       const ramp = clamp(elapsed / 430, 0, 1);
-      const pressure = finale
+      const rawPressure = finale
         ? Math.min(19, 10 + Math.floor((elapsed - ENDGAME_TIME) / 12) + Math.floor(player.curse * 6))
         : Math.min(15, 3 + Math.floor(elapsed / 40) + Math.floor(ramp * 3) + Math.floor(player.curse * 4));
+      const pressure = finale ? Math.max(1, Math.floor(rawPressure * 0.8)) : rawPressure;
       const budget = Math.min(pressure, MAX_ENEMIES - enemies.length);
       for (let i = 0; i < budget; i++) spawnEnemy(false);
       spawnTimer = finale ? 0.36 : Math.max(0.5, 1.56 - wave * 0.025 - player.curse * 0.12);
