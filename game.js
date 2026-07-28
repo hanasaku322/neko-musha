@@ -4026,11 +4026,20 @@
     const count = evolved ? 5 + baseLevel * 2 : 1 + baseLevel * 2;
     const radius = (170 + player.arrows * 18) * Math.min(player.area, 1.35);
     const arrowDamage = scaledDamage(player.damage * (evolved ? 0.78 + baseLevel * 0.11 : 0.62 + baseLevel * 0.1));
+    const targets = nearestEnemies(count, radius);
     for (let i = 0; i < count; i++) {
-      const angle = i * TAU / count + rand(-0.18, 0.18);
-      const dist = Math.sqrt(Math.random()) * radius;
-      const tx = player.x + Math.cos(angle) * dist;
-      const ty = player.y + Math.sin(angle) * dist;
+      const target = targets[i % Math.max(1, targets.length)];
+      let tx;
+      let ty;
+      if (target) {
+        tx = target.x + target.vx * 0.18 + rand(-18, 18);
+        ty = target.y + target.vy * 0.18 + rand(-18, 18);
+      } else {
+        const angle = i * TAU / count + rand(-0.18, 0.18);
+        const dist = Math.sqrt(Math.random()) * radius;
+        tx = player.x + Math.cos(angle) * dist;
+        ty = player.y + Math.sin(angle) * dist;
+      }
       if (projectiles.length >= MAX_PROJECTILES) projectiles.shift();
       projectiles.push({
         x: tx + rand(-36, 36),
