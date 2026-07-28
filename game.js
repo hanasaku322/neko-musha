@@ -231,8 +231,8 @@
     armored: "assets/characters/armored.png",
     senryoThief: "assets/characters/senryo-thief.png",
     denkichi: "assets/characters/denkichi.png",
-    oniElite: "assets/characters/oni-elite.png",
-    boss: "assets/characters/blue-horn-king.png",
+    oniElite: "assets/characters/blue-horn-king.png",
+    boss: "assets/characters/oni-elite.png",
     overlord: "assets/characters/overlord.png"
   };
   const characterFrameNames = {
@@ -244,8 +244,8 @@
     armored: "armored",
     senryoThief: "senryo-thief",
     denkichi: "denkichi",
-    oniElite: "oni-elite",
-    boss: "blue-horn-king",
+    oniElite: "blue-horn-king",
+    boss: "oni-elite",
     overlord: "overlord"
   };
   const CHARACTER_FRAME_COUNT = 4;
@@ -291,8 +291,8 @@
     tengu: { name: "夜天狗", line: "空からなら、その片目では追えまい。" },
     shinobi: { name: "影忍", line: "背後はもらった。音もなく終わらせる。" },
     armored: { name: "鎧鬼", line: "小さき刃で、この鎧が裂けるものか。" },
-    oniElite: { name: "赤角鬼将", line: "ここから先は鬼の陣。踏み越えられるか。" },
-    boss: { name: "青角王", line: "弱き命を守るだと？ ならばその刃で証してみせよ。" },
+    oniElite: { name: "青角王", line: "弱き命を守るだと？ ならばその刃で証してみせよ。" },
+    boss: { name: "赤角鬼将", line: "ここから先は鬼の陣。踏み越えられるか。" },
     overlord: { name: "終焉の黒角王", line: "逃げ場はない。十五分の夜を、永遠に変えてやる。" }
   };
 
@@ -307,8 +307,8 @@
     tengu: "風で隠す髪もないとはな。空から笑ってやる。",
     shinobi: "闇より先に額が光ったぞ、伝吉。",
     armored: "その頭で兜なしとは、よほど覚悟があるらしい。",
-    oniElite: "薄毛の剣士よ、鬼の陣を越えられるか。",
-    boss: "青き角より、その額の光の方が眩しいぞ。",
+    oniElite: "青き角より、その額の光の方が眩しいぞ。",
+    boss: "薄毛の剣士よ、鬼の陣を越えられるか。",
     overlord: "頭上の月と額の光、どちらが先に沈むかな。",
     senryoThief: "へっへっへ、髪は盗らねえよ。もう残りが少ねえからな！"
   };
@@ -1104,8 +1104,8 @@
     { id: "tengu", name: "夜天狗", type: "飛行敵", desc: "空から入り込む素早い敵。上空側から現れ、こちらの陣形を乱す。", hp: "低", speed: "速い", accent: "#46d8d2" },
     { id: "shinobi", name: "影忍", type: "俊足敵", desc: "距離を詰めるのが得意な忍び。後半は不意の接近に注意。", hp: "中", speed: "かなり速い", accent: "#c68cff" },
     { id: "armored", name: "骸鬼", type: "重装敵", desc: "重い鎧をまとった鬼。足は遅いが硬く、群れに混ざると押し返しにくい。", hp: "高", speed: "遅い", accent: "#f1b84b" },
-    { id: "oniElite", name: "赤角鬼将", type: "中ボス", desc: "中盤以降に現れる鬼将。突進で陣形を崩し、倒すと宝箱を落とすことがある。", hp: "高", speed: "中", accent: "#ff4b38" },
-    { id: "boss", name: "青角王", type: "中ボス", desc: "青い角を掲げる大鬼。冷たい気配をまとい、ぴぃ丸の前に立ちはだかる。", hp: "高", speed: "遅め", accent: "#2f9bff" },
+    { id: "oniElite", name: "青角王", type: "中ボス", desc: "青い角を掲げる大鬼。冷たい気配をまとい、ぴぃ丸の前に立ちはだかる。", hp: "高", speed: "中", accent: "#2f9bff" },
+    { id: "boss", name: "赤角鬼将", type: "中ボス", desc: "中盤以降に現れる鬼将。突進で陣形を崩し、倒すと宝箱を落とすことがある。", hp: "高", speed: "遅め", accent: "#ff4b38" },
     { id: "overlord", name: "終焉の黒角王", type: "最終ボス", desc: "8分以降に現れる別格の王。時折立ち止まり、六方向へ弾を放つ。", hp: "別格", speed: "中", accent: "#ff2438" },
     { id: "senryoThief", name: "千両泥棒", type: "希少敵", desc: "小判を抱えて中央付近を走り回る泥棒。倒せば両を稼げるが、逃げ足は速い。", hp: "やや高", speed: "速い", accent: "#ffdf5a" }
   ];
@@ -3823,8 +3823,8 @@
       tengu: { hp: 24 + elapsed * 0.22, speed: 78 + elapsed * 0.09, r: 17, value: 1.7, color: "#46d8d2", sprite: "tengu", spriteKey: "tengu" },
       shinobi: { hp: 28 + elapsed * 0.24, speed: 106 + elapsed * 0.1, r: 16, value: 2.2, color: "#c68cff", sprite: "tengu", spriteKey: "shinobi" },
       armored: { hp: 145 + elapsed * 0.88, speed: 42 + elapsed * 0.045, r: 29, value: 6.5, color: "#f1b84b", sprite: "ashigaru", spriteKey: "armored" },
-      oniElite: { hp: 475 + elapsed * 1.85, speed: 52 + elapsed * 0.035, r: 39, value: 15, color: "#ff4b38", sprite: "boss", spriteKey: "oniElite" },
-      boss: { hp: 460 + elapsed * 2.85, speed: 36 + elapsed * 0.022, r: 50, value: 26, color: "#2f9bff", sprite: "boss", spriteKey: "boss" },
+      oniElite: { hp: 475 + elapsed * 1.85, speed: 52 + elapsed * 0.035, r: 39, value: 15, color: "#2f9bff", sprite: "boss", spriteKey: "oniElite" },
+      boss: { hp: 460 + elapsed * 2.85, speed: 36 + elapsed * 0.022, r: 50, value: 26, color: "#ff4b38", sprite: "boss", spriteKey: "boss" },
       overlord: { hp: 40000 + elapsed * 80, speed: 58, r: 76, value: 48, color: "#ff2438", sprite: "boss", spriteKey: "overlord" }
     };
     const s = specs[type];
