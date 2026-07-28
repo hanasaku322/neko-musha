@@ -4245,8 +4245,8 @@
     const baseLevel = clamp(evolved ? player.sake - 3 : player.sake, 1, 5);
     const count = evolved ? 12 : clamp(2 + (baseLevel - 1) * 2, 2, 10);
     const areaMul = Math.min(player.area, evolved ? 1.18 : 1.12);
-    const ring = (evolved ? 62 + baseLevel * 9 : 36 + baseLevel * 8) * areaMul;
-    const puddleRadius = (evolved ? 24 + baseLevel * 3 : 16 + baseLevel * 2.4) * areaMul;
+    const ring = (evolved ? 82 + baseLevel * 13 : 48 + baseLevel * 12) * areaMul;
+    const puddleRadius = (evolved ? 31 + baseLevel * 4.2 : 22 + baseLevel * 3.4) * areaMul;
     const puddleDamage = scaledDamage(player.damage * (evolved ? 0.12 + baseLevel * 0.018 : 0.08 + baseLevel * 0.014));
     for (let i = 0; i < count; i++) {
       const angle = i * TAU / Math.max(1, count) + elapsed * 0.18;
@@ -4337,14 +4337,16 @@
     camera.shake = Math.max(camera.shake, hitCount ? 7 : 3.5);
   }
 
-  function damageEnemy(enemy, amount, angle = 0) {
+  function damageEnemy(enemy, amount, angle = 0, options = {}) {
     enemy.hp -= amount;
     const unstoppable = enemy.type === "overlord" && chance(0.68);
-    enemy.hit = unstoppable ? 0.045 : 0.11;
+    if (!options.noFlinch) enemy.hit = unstoppable ? 0.045 : 0.11;
     const heavy = enemy.type === "armored" || enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord";
     const knock = enemy.type === "overlord" ? (unstoppable ? 2 : 10) : heavy ? 24 : 62;
-    enemy.vx += Math.cos(angle) * knock;
-    enemy.vy += Math.sin(angle) * knock;
+    if (!options.noKnockback) {
+      enemy.vx += Math.cos(angle) * knock;
+      enemy.vy += Math.sin(angle) * knock;
+    }
     const showDamageNumber = enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord";
     if (showDamageNumber && texts.length < MAX_FLOAT_TEXTS && amount > 3) {
       const damageTextCount = texts.reduce((count, item) => count + (item.kind === "damage" ? 1 : 0), 0);
@@ -4947,10 +4949,7 @@
       puddle.tick = 0.24;
       for (const enemy of enemies) {
         if (isEnemyInPuddle(enemy, puddle)) {
-          const dx = enemy.x - puddle.x;
-          const dy = enemy.y - puddle.y;
-          enemy.slow = Math.max(enemy.slow, 0.42);
-          damageEnemy(enemy, puddle.damage, Math.atan2(dy, dx));
+          damageEnemy(enemy, puddle.damage, 0, { noKnockback: true, noFlinch: true });
         }
       }
     }
