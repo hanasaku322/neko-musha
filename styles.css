@@ -1121,6 +1121,15 @@ h2 {
   filter: drop-shadow(0 12px 18px rgba(0, 0, 0, 0.62));
 }
 
+.encyclopedia-silhouette {
+  filter:
+    brightness(0)
+    saturate(0)
+    drop-shadow(0 0 18px rgba(255, 36, 56, 0.42))
+    drop-shadow(0 12px 18px rgba(0, 0, 0, 0.8));
+  opacity: 0.92;
+}
+
 .encyclopedia-copy {
   position: relative;
   z-index: 1;
@@ -1212,6 +1221,57 @@ h2 {
   font-size: 16px;
   font-weight: 1000;
   text-shadow: 0 0 8px rgba(255, 223, 90, 0.45);
+}
+
+.encyclopedia-archive-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.encyclopedia-archive-card {
+  min-height: 188px;
+}
+
+.encyclopedia-archive-img {
+  width: 100%;
+  max-width: 118px;
+  max-height: 128px;
+  object-fit: contain;
+  border-radius: 7px;
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.48);
+}
+
+.encyclopedia-audio-mark {
+  width: 72px;
+  height: 72px;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(88, 243, 228, 0.42);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle, rgba(88, 243, 228, 0.24), transparent 62%),
+    rgba(0, 0, 0, 0.34);
+  color: #eaffff;
+  font-size: 34px;
+  font-weight: 1000;
+  text-shadow: 0 0 14px rgba(88, 243, 228, 0.72);
+}
+
+.archive-audio {
+  width: 100%;
+  max-width: 260px;
+  height: 32px;
+}
+
+.archive-link {
+  width: fit-content;
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 232, 164, 0.24);
+  border-radius: 7px;
+  background: rgba(255, 232, 164, 0.1);
+  color: #ffe9ad;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
 }
 
 .pause-screen {
@@ -2737,7 +2797,7 @@ h2 {
 
   .encyclopedia-tabs {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(2, 1fr);
   }
 
   .encyclopedia-tabs button {

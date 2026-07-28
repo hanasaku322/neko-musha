@@ -1115,6 +1115,23 @@
     overlordEntry.desc = "10分以降に現れる別格の王。時折立ち止まり、六方向へ弾を放つ。";
   }
 
+  const archiveAssets = [
+    { type: "image", group: "舞台", name: "タイトル絵", src: "assets/title-neko-musha.png", desc: "猫武者の旅立ちを飾る一枚。" },
+    { type: "image", group: "舞台", name: "戦国の夜", src: "assets/sengoku-stage.png", desc: "妖気が漂う戦場背景。" },
+    { type: "image", group: "舞台", name: "武器屋", src: "assets/shop-neko-musha.png", desc: "出陣前に力を整える武器屋。" },
+    { type: "image", group: "舞台", name: "戦績", src: "assets/records-neko-musha.png", desc: "これまでの戦いを刻む戦績画面。" },
+    { type: "image", group: "物語", name: "エンディング", src: "assets/ending-neko-musha.png", desc: "夜を越えた者だけが見られる結末。" },
+    { type: "image", group: "演出", name: "猫神奥義札", src: "assets/neko-fury-cutin.png", desc: "ぴぃ丸の奥義発動カットイン。" },
+    { type: "image", group: "演出", name: "宝物発見", src: "assets/jackpot-treasure-cutin.png", desc: "猫箱大当たりのカットイン。" },
+    { type: "image", group: "演出", name: "伝吉奥義札", src: "assets/denkichi-fury-cutin.png", desc: "伝吉の奥義発動カットイン。" },
+    { type: "image", group: "演出", name: "伝吉登場", src: "assets/denkichi-jackpot-cutin.png", desc: "伝吉の大当たりカットイン。" },
+    { type: "image", group: "キャラ", name: "ぴぃ丸", src: "assets/characters/hero-samurai.png", desc: "隻眼の猫武者。" },
+    { type: "image", group: "キャラ", name: "伝吉", src: "assets/characters/denkichi.png", desc: "クリア後に選べる剣士。" },
+    { type: "image", group: "キャラ", name: "終焉の黒角王", src: "assets/characters/overlord.png", desc: "夜の果てに待つ最終ボス。" },
+    { type: "audio", group: "BGM", name: "戦場曲", src: "assets/bgm/field-theme.mp3", desc: "プレイフィールドで流れる曲。" },
+    { type: "audio", group: "BGM", name: "エンディング曲", src: "assets/bgm/ending-theme.mp3", desc: "エンディングで流れる曲。" }
+  ];
+
   function scaledDamage(value) {
     return value * player.might;
   }
@@ -2079,27 +2096,66 @@
     `;
   }
 
+  function hasClearedGame() {
+    return (Number(metaSave?.stats?.wins) || 0) > 0;
+  }
+
   function encyclopediaEnemyCard(enemy) {
+    const lockedOverlord = enemy.id === "overlord" && !hasClearedGame();
     const src = characterSpritePaths[enemy.id] || characterSpritePaths.wraith;
     return `
       <article class="encyclopedia-card" style="--accent:${enemy.accent || "#ffdf5a"}">
         <div class="encyclopedia-art">
-          <img class="encyclopedia-enemy-img" src="${src}" alt="${enemy.name}">
+          <img class="encyclopedia-enemy-img ${lockedOverlord ? "encyclopedia-silhouette" : ""}" src="${src}" alt="${lockedOverlord ? "未確認の最終ボス" : enemy.name}">
         </div>
         <div class="encyclopedia-copy">
-          <span class="encyclopedia-type">${enemy.type}</span>
-          <h3>${enemy.name}</h3>
-          <p>${enemy.desc}</p>
+          <span class="encyclopedia-type">${lockedOverlord ? "最終ボス" : enemy.type}</span>
+          <h3>${lockedOverlord ? "???" : enemy.name}</h3>
+          <p>${lockedOverlord ? "夜の果てに待つ存在。討伐後、姿と記録が解禁される。" : enemy.desc}</p>
         </div>
       </article>
     `;
   }
 
+  function encyclopediaArchiveCard(asset) {
+    return `
+      <article class="encyclopedia-card encyclopedia-archive-card" style="--accent:${asset.type === "audio" ? "#58f3e4" : "#ffdf5a"}">
+        <div class="encyclopedia-art">
+          ${asset.type === "audio"
+            ? `<div class="encyclopedia-audio-mark">♪</div>`
+            : `<img class="encyclopedia-archive-img" src="${asset.src}" alt="${asset.name}" loading="lazy">`}
+        </div>
+        <div class="encyclopedia-copy">
+          <span class="encyclopedia-type">${asset.group}</span>
+          <h3>${asset.name}</h3>
+          <p>${asset.desc}</p>
+          ${asset.type === "audio" ? `<audio class="archive-audio" controls preload="none" src="${asset.src}"></audio>` : `<a class="archive-link" href="${asset.src}" target="_blank" rel="noopener">画像を開く</a>`}
+        </div>
+      </article>
+    `;
+  }
+
+  function stopArchiveAudio() {
+    encyclopediaList?.querySelectorAll("audio").forEach(track => {
+      track.pause();
+      track.currentTime = 0;
+    });
+  }
+
   function renderEncyclopedia(tab = "items") {
     if (!encyclopediaList || !encyclopediaTabs) return;
+    const cleared = hasClearedGame();
+    if (tab === "materials" && !cleared) tab = "items";
+    stopArchiveAudio();
     encyclopediaTabs.querySelectorAll("button").forEach(button => {
+      if (button.dataset.clearBonusTab !== undefined) button.hidden = !cleared;
       button.classList.toggle("active", button.dataset.encyclopediaTab === tab);
     });
+    encyclopediaList.classList.toggle("encyclopedia-archive-list", tab === "materials");
+    if (tab === "materials") {
+      encyclopediaList.innerHTML = archiveAssets.map(encyclopediaArchiveCard).join("");
+      return;
+    }
     if (tab === "enemies") {
       encyclopediaList.innerHTML = encyclopediaEnemyCopy
         .filter(enemy => enemy.id !== "denkichi" || isCharacterUnlocked("denkichi"))
@@ -2181,6 +2237,7 @@
 
   function closeEncyclopedia() {
     gamepadChoiceIndex = 0;
+    stopArchiveAudio();
     encyclopediaScreen.classList.add("hidden");
     if (encyclopediaReturnState === "paused") {
       state = "paused";
@@ -6770,7 +6827,7 @@
   }
 
   function updateGamepadFocus(navY, navX) {
-    const buttons = currentGamepadButtons().filter(button => button && !button.disabled && !button.classList.contains("spinning"));
+    const buttons = currentGamepadButtons().filter(button => button && !button.hidden && !button.disabled && !button.classList.contains("spinning"));
     document.querySelectorAll(".gamepad-focus").forEach(item => item.classList.remove("gamepad-focus"));
     if (!buttons.length) {
       gamepadChoiceIndex = 0;
@@ -6788,7 +6845,7 @@
   }
 
   function clickFocusedGamepadButton() {
-    const buttons = currentGamepadButtons().filter(button => button && !button.disabled && !button.classList.contains("spinning"));
+    const buttons = currentGamepadButtons().filter(button => button && !button.hidden && !button.disabled && !button.classList.contains("spinning"));
     if (!buttons.length) return false;
     gamepadChoiceIndex = clamp(gamepadChoiceIndex, 0, buttons.length - 1);
     buttons[gamepadChoiceIndex].click();
