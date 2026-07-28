@@ -4021,9 +4021,11 @@
   }
 
   function doFireArrows() {
-    const count = 3 + player.arrows * 2;
     const evolved = evolvedItems.has("heavenVolley");
+    const baseLevel = clamp(evolved ? player.arrows - 3 : player.arrows, 1, 5);
+    const count = evolved ? 5 + baseLevel * 2 : 1 + baseLevel * 2;
     const radius = (170 + player.arrows * 18) * Math.min(player.area, 1.35);
+    const arrowDamage = scaledDamage(player.damage * (evolved ? 0.78 + baseLevel * 0.11 : 0.62 + baseLevel * 0.1));
     for (let i = 0; i < count; i++) {
       const angle = i * TAU / count + rand(-0.18, 0.18);
       const dist = Math.sqrt(Math.random()) * radius;
@@ -4037,7 +4039,7 @@
         vy: (520 + player.arrows * 28) * player.projectileSpeed,
         r: 9,
         life: 1.25 * player.duration,
-        damage: scaledDamage(player.damage * (0.72 + player.arrows * 0.13)),
+        damage: arrowDamage,
         color: evolved ? "#ffd35a" : "#ff7438",
         pierce: 0,
         area: (38 + player.arrows * 6) * player.area,
