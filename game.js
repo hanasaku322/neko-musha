@@ -4949,6 +4949,7 @@
       puddle.tick = 0.24;
       for (const enemy of enemies) {
         if (isEnemyInPuddle(enemy, puddle)) {
+          enemy.slow = Math.max(enemy.slow, puddle.kind === "pureFlood" ? 0.3 : 0.22);
           damageEnemy(enemy, puddle.damage, 0, { noKnockback: true, noFlinch: true });
         }
       }
