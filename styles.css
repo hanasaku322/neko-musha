@@ -1722,7 +1722,30 @@ h2 {
 
 .synthesis-yes,
 .synthesis-no {
+  margin-top: 10px;
   min-height: 58px;
+}
+
+.synthesis-yes {
+  grid-column: 2;
+  border-color: rgba(255, 223, 112, 0.92);
+  background: linear-gradient(180deg, #ffdf5a, #c94b28);
+  color: #1e0704;
+  box-shadow: 0 0 26px rgba(255, 211, 92, 0.32);
+}
+
+.synthesis-no {
+  grid-column: 1;
+  border-color: rgba(220, 230, 236, 0.36);
+  background: rgba(15, 17, 22, 0.86);
+  color: #fff7ec;
+}
+
+@media (max-width: 720px) {
+  .synthesis-yes,
+  .synthesis-no {
+    grid-column: 1;
+  }
 }
 
 .synthesis-yes:disabled,

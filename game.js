@@ -3753,7 +3753,7 @@
     if (enemies.length >= MAX_ENEMIES || countEnemiesByType("senryoThief") > 0) return false;
     const spawn = spawnVisiblePointAroundPlayer();
     if (spawn.y < SKY_LINE_Y) spawn.y = SKY_LINE_Y + rand(70, 230);
-    const hp = 164 + player.level * 9 + elapsed * 0.42;
+    const hp = 230 + player.level * 12 + elapsed * 0.56;
     enemies.push({
       type: "senryoThief",
       x: spawn.x,
@@ -3764,7 +3764,7 @@
       maxHp: hp,
       levelHpMul: 1,
       speed: 172 + clamp(elapsed / 600, 0, 1) * 34,
-      r: 23,
+      r: 29,
       value: 8,
       color: "#ffcf4b",
       sprite: "ashigaru",
@@ -3823,7 +3823,7 @@
       tengu: { hp: 24 + elapsed * 0.22, speed: 78 + elapsed * 0.09, r: 17, value: 1.7, color: "#46d8d2", sprite: "tengu", spriteKey: "tengu" },
       shinobi: { hp: 28 + elapsed * 0.24, speed: 106 + elapsed * 0.1, r: 16, value: 2.2, color: "#c68cff", sprite: "tengu", spriteKey: "shinobi" },
       armored: { hp: 145 + elapsed * 0.88, speed: 42 + elapsed * 0.045, r: 29, value: 6.5, color: "#f1b84b", sprite: "ashigaru", spriteKey: "armored" },
-      oniElite: { hp: 410 + elapsed * 1.65, speed: 52 + elapsed * 0.035, r: 39, value: 15, color: "#ff4b38", sprite: "boss", spriteKey: "oniElite" },
+      oniElite: { hp: 475 + elapsed * 1.85, speed: 52 + elapsed * 0.035, r: 39, value: 15, color: "#ff4b38", sprite: "boss", spriteKey: "oniElite" },
       boss: { hp: 460 + elapsed * 2.85, speed: 36 + elapsed * 0.022, r: 50, value: 26, color: "#2f9bff", sprite: "boss", spriteKey: "boss" },
       overlord: { hp: 40000 + elapsed * 80, speed: 58, r: 76, value: 48, color: "#ff2438", sprite: "boss", spriteKey: "overlord" }
     };
@@ -3889,6 +3889,7 @@
       shootDenkichiLaser();
       return;
     }
+    const eclipse = evolvedItems.has("eclipseFang");
     const count = Math.max(1, player.projectileCount);
     for (let i = 0; i < count; i++) {
       const base = player.dir;
@@ -3905,9 +3906,9 @@
         r: (crit ? 13 : 11) * Math.min(player.area, 1.55),
         life: 0.92 * player.duration,
         damage: scaledDamage(player.damage * (crit ? 1.8 : 1)),
-        color: crit ? "#ffdf5a" : "#5fe8e2",
+        color: eclipse ? (crit ? "#fff0a3" : "#ff4058") : (crit ? "#ffdf5a" : "#5fe8e2"),
         pierce: (crit ? 1 : 0) + player.extraPierce,
-        kind: "bullet"
+        kind: eclipse ? "eclipseBullet" : "bullet"
       });
     }
     if (chance(0.3) && audio) audio.sfx("slash");
@@ -3934,8 +3935,20 @@
     const target = nearestEnemies(1, 820)[0];
     const angle = target ? Math.atan2(target.y - player.y, target.x - player.x) : player.dir;
     const radius = (58 + player.slashPower * 22) * player.area;
+    const sakuraMoon = evolvedItems.has("sakuraMoon");
+    const eclipse = evolvedItems.has("eclipseFang");
     player.poseTimer = 0.24;
-    slashes.push({ x: player.x, y: player.y, angle, life: 0.18, max: 0.18, r: radius });
+    slashes.push({
+      x: player.x,
+      y: player.y,
+      angle,
+      life: 0.18,
+      max: 0.18,
+      r: radius,
+      kind: sakuraMoon ? "sakuraMoon" : eclipse ? "eclipseFang" : "slash",
+      color: sakuraMoon ? "#ff9fc8" : eclipse ? "#ffdf5a" : undefined,
+      edgeColor: sakuraMoon ? "#ff5f9c" : eclipse ? "#ff304f" : undefined
+    });
     for (const enemy of enemies) {
       const dx = enemy.x - player.x;
       const dy = enemy.y - player.y;
@@ -3951,9 +3964,11 @@
 
   function doDrum() {
     if (!player.drum) return;
+    const evolved = evolvedItems.has("warThunder");
     const radius = (138 + player.drum * 32) * player.area;
     const damage = scaledDamage(player.damage * (0.95 + player.drum * 0.22));
-    shockwaves.push({ x: player.x, y: player.y, r: 32, life: 0.44, max: 0.44, color: "#ffb93f", power: 0 });
+    shockwaves.push({ x: player.x, y: player.y, r: 32, life: 0.44, max: 0.44, color: evolved ? "#7ff7ff" : "#ffb93f", power: 0, kind: evolved ? "warThunder" : "drum" });
+    if (evolved) shockwaves.push({ x: player.x, y: player.y, r: 62, life: 0.34, max: 0.34, color: "#ffdf5a", power: 0, kind: "warThunder" });
     for (const enemy of enemies) {
       if (d2(player, enemy) < sqr(radius + enemy.r)) damageEnemy(enemy, damage, Math.atan2(enemy.y - player.y, enemy.x - player.x));
     }
@@ -3963,8 +3978,9 @@
   function doShuriken() {
     if (!player.shuriken) return;
     const count = 2 + player.shuriken;
+    const evolved = evolvedItems.has("shadowStorm");
     for (let i = 0; i < count; i++) {
-      const angle = i * TAU / count + elapsed * 0.5;
+      const angle = i * TAU / count - Math.PI / 2;
       if (projectiles.length >= MAX_PROJECTILES) projectiles.shift();
       projectiles.push({
         x: player.x,
@@ -3974,8 +3990,9 @@
         r: 7,
         life: 0.75 * player.duration,
         damage: scaledDamage(player.damage * (0.72 + player.shuriken * 0.08)),
-        color: "#d8c8ff",
-        pierce: 1 + player.extraPierce
+        color: evolved ? "#8f6cff" : "#d8c8ff",
+        pierce: 1 + player.extraPierce,
+        kind: evolved ? "shadowShuriken" : "shuriken"
       });
     }
   }
@@ -4005,26 +4022,29 @@
 
   function doFireArrows() {
     const count = 3 + player.arrows * 2;
-    const targets = nearestEnemies(count, 980);
+    const evolved = evolvedItems.has("heavenVolley");
+    const radius = (170 + player.arrows * 18) * Math.min(player.area, 1.35);
     for (let i = 0; i < count; i++) {
-      const target = targets[i % Math.max(1, targets.length)];
-      const tx = target ? target.x : player.x + rand(-360, 360);
-      const ty = target ? target.y : player.y + rand(-260, 260);
+      const angle = i * TAU / count + rand(-0.18, 0.18);
+      const dist = Math.sqrt(Math.random()) * radius;
+      const tx = player.x + Math.cos(angle) * dist;
+      const ty = player.y + Math.sin(angle) * dist;
       if (projectiles.length >= MAX_PROJECTILES) projectiles.shift();
       projectiles.push({
-        x: tx + rand(-160, 160),
+        x: tx + rand(-36, 36),
         y: ty - rand(360, 520),
-        vx: rand(-40, 40),
+        vx: rand(-24, 24),
         vy: (520 + player.arrows * 28) * player.projectileSpeed,
         r: 9,
         life: 1.25 * player.duration,
-        damage: scaledDamage(player.damage * (0.9 + player.arrows * 0.18)),
-        color: "#ff7438",
+        damage: scaledDamage(player.damage * (0.72 + player.arrows * 0.13)),
+        color: evolved ? "#ffd35a" : "#ff7438",
         pierce: 0,
-        area: (44 + player.arrows * 8) * player.area,
-        kind: "arrow"
+        area: (38 + player.arrows * 6) * player.area,
+        kind: evolved ? "heavenArrow" : "arrow"
       });
     }
+    shockwaves.push({ x: player.x, y: player.y, r: radius, life: 0.3, max: 0.3, color: evolved ? "#ffd35a" : "#ff7438", power: 0 });
   }
 
   function doOrbitDamage(dt) {
@@ -4221,20 +4241,22 @@
 
   function doPurifyingSake() {
     const count = 1 + Math.floor(player.sake / 2);
-    const targets = nearestEnemies(count, 760);
+    const evolved = evolvedItems.has("pureFlood");
+    const ring = (64 + player.sake * 15) * Math.min(player.area, 1.34);
     for (let i = 0; i < count; i++) {
-      const target = targets[i];
-      const x = target ? target.x + rand(-28, 28) : player.x + rand(-220, 220);
-      const y = target ? target.y + rand(-28, 28) : player.y + rand(-220, 220);
+      const angle = i * TAU / Math.max(1, count) + elapsed * 0.18;
+      const x = player.x + Math.cos(angle) * ring;
+      const y = player.y + Math.sin(angle) * ring;
       puddles.push({
         x,
         y,
-        r: (34 + player.sake * 5) * Math.min(player.area, 1.38),
+        r: (32 + player.sake * 4) * Math.min(player.area, 1.32),
         life: 3.2 + player.sake * 0.22,
         max: 3.2 + player.sake * 0.22,
         tick: 0,
-        damage: scaledDamage(player.damage * (0.28 + player.sake * 0.045)),
-        color: "#6fc8ff"
+        damage: scaledDamage(player.damage * (0.22 + player.sake * 0.035)),
+        color: evolved ? "#7ff7ff" : "#6fc8ff",
+        kind: evolved ? "pureFlood" : "sake"
       });
       shockwaves.push({ x, y, r: 16, life: 0.34, max: 0.34, color: "#6fc8ff", power: 0 });
     }
@@ -4932,9 +4954,7 @@
   function isEnemyInPuddle(enemy, puddle) {
     const dx = enemy.x - puddle.x;
     const dy = enemy.y - puddle.y;
-    const rx = puddle.r + enemy.r * 0.45;
-    const ry = puddle.r * 0.58 + enemy.r * 0.32;
-    return (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) < 1;
+    return dx * dx + dy * dy < sqr(puddle.r + enemy.r * 0.42);
   }
 
   function getProjectileHitRadius(p) {
@@ -5658,18 +5678,33 @@
       ctx.restore();
     }
     if (player.aura > 0) {
+      const foxAegis = evolvedItems.has("foxAegis");
       const count = getAuraOrbCount();
       syncAuraOrbs(count);
       const radius = getAuraRadius();
       const activeCount = player.auraOrbs.filter(orb => orb.active).length;
       const g = ctx.createRadialGradient(0, 0, 10, 0, 0, radius);
-      g.addColorStop(0, "rgba(92, 232, 214, 0.08)");
-      g.addColorStop(0.7, `rgba(92, 232, 214, ${activeCount ? 0.06 : 0.02})`);
-      g.addColorStop(1, "rgba(92, 232, 214, 0)");
+      g.addColorStop(0, foxAegis ? "rgba(255, 138, 61, 0.1)" : "rgba(92, 232, 214, 0.08)");
+      g.addColorStop(0.7, foxAegis ? `rgba(255, 223, 90, ${activeCount ? 0.08 : 0.025})` : `rgba(92, 232, 214, ${activeCount ? 0.06 : 0.02})`);
+      g.addColorStop(1, foxAegis ? "rgba(255, 138, 61, 0)" : "rgba(92, 232, 214, 0)");
       ctx.fillStyle = g;
       ctx.beginPath();
       ctx.arc(0, 0, radius, 0, TAU);
       ctx.fill();
+      if (foxAegis && perfMode.level < 2) {
+        ctx.strokeStyle = "rgba(255, 223, 90, 0.28)";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const a = i * TAU / 8 + elapsed * 0.22;
+          const x = Math.cos(a) * radius * 0.92;
+          const y = Math.sin(a) * radius * 0.92;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+      }
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
       for (let i = 0; i < player.auraOrbs.length; i++) {
@@ -5678,20 +5713,28 @@
         const x = Math.cos(a) * radius;
         const y = Math.sin(a) * radius;
         const pulse = 1 + Math.sin(elapsed * 10 + i) * 0.12;
-        ctx.shadowColor = "#58f3e4";
+        ctx.shadowColor = foxAegis ? "#ff8a3d" : "#58f3e4";
         ctx.shadowBlur = orb.active ? 18 : 5;
         ctx.globalAlpha = orb.active ? 0.92 : clamp(1 - orb.respawn / 5, 0.12, 0.38);
-        ctx.fillStyle = "#58f3e4";
+        ctx.fillStyle = foxAegis ? "#ff8a3d" : "#58f3e4";
         ctx.beginPath();
         if (orb.active) {
-          ctx.arc(x, y, (7 + player.aura * 0.7) * pulse, 0, TAU);
+          if (foxAegis) {
+            ctx.moveTo(x, y - (10 + player.aura * 0.75) * pulse);
+            ctx.lineTo(x + (8 + player.aura * 0.5) * pulse, y);
+            ctx.lineTo(x, y + (10 + player.aura * 0.75) * pulse);
+            ctx.lineTo(x - (8 + player.aura * 0.5) * pulse, y);
+            ctx.closePath();
+          } else {
+            ctx.arc(x, y, (7 + player.aura * 0.7) * pulse, 0, TAU);
+          }
           ctx.fill();
-          ctx.fillStyle = "#fff0b8";
+          ctx.fillStyle = foxAegis ? "#fff1a8" : "#fff0b8";
           ctx.beginPath();
           ctx.arc(x - 2, y - 2, 3.5 * pulse, 0, TAU);
           ctx.fill();
         } else {
-          ctx.strokeStyle = "#58f3e4";
+          ctx.strokeStyle = foxAegis ? "#ff8a3d" : "#58f3e4";
           ctx.lineWidth = 2;
           ctx.arc(x, y, 7 + player.aura * 0.5, 0, TAU);
           ctx.stroke();
@@ -5700,24 +5743,48 @@
       ctx.restore();
     }
     if (player.orbit || player.sutra) {
+      const greatSutra = evolvedItems.has("greatSutra");
       const count = getOrbitOrbCount();
       syncOrbitOrbs(count);
       const radius = getOrbitRadius();
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
+      if (greatSutra && perfMode.level < 2) {
+        ctx.strokeStyle = "rgba(243, 208, 255, 0.22)";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(0, 0, radius + 16, 0, TAU);
+        ctx.stroke();
+        ctx.setLineDash([8, 12]);
+        ctx.strokeStyle = "rgba(255, 232, 168, 0.24)";
+        ctx.beginPath();
+        ctx.arc(0, 0, radius - 10, 0, TAU);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
       for (let i = 0; i < player.orbitOrbs.length; i++) {
         const orb = player.orbitOrbs[i];
         const a = elapsed * (1.7 + player.sutra * 0.12) + i * TAU / Math.max(1, player.orbitOrbs.length);
         const x = Math.cos(a) * radius;
         const y = Math.sin(a) * radius;
-        ctx.fillStyle = orb.kind === "sutra" ? "#f3d0ff" : "#ffe8a8";
+        ctx.fillStyle = greatSutra ? (orb.kind === "sutra" ? "#ffffff" : "#ffdca8") : (orb.kind === "sutra" ? "#f3d0ff" : "#ffe8a8");
         ctx.shadowColor = ctx.fillStyle;
-        ctx.shadowBlur = orb.active ? 12 : 4;
+        ctx.shadowBlur = orb.active ? (greatSutra ? 18 : 12) : 4;
         ctx.globalAlpha = orb.active ? 1 : clamp(1 - orb.respawn / 4.2, 0.16, 0.46);
         ctx.beginPath();
         if (orb.active) {
-          ctx.arc(x, y, 5 + player.sutra, 0, TAU);
-          ctx.fill();
+          if (greatSutra && orb.kind === "sutra") {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.rotate(a + Math.PI / 2);
+            ctx.beginPath();
+            ctx.rect(-(7 + player.sutra * 0.5), -(10 + player.sutra * 0.7), 14 + player.sutra, 20 + player.sutra * 1.4);
+            ctx.fill();
+            ctx.restore();
+          } else {
+            ctx.arc(x, y, 5 + player.sutra, 0, TAU);
+            ctx.fill();
+          }
           if (orb.hits <= 1) {
             ctx.strokeStyle = "rgba(255,255,255,0.55)";
             ctx.lineWidth = 1.5;
@@ -5821,7 +5888,7 @@
       ctx.scale(pulse, pulse);
       drawImageRounded(fallback, -size / 2, -size / 2, size, size);
     }
-    if (enemy.hp < enemy.maxHp && (perfMode.level < 2 || isImportantEnemy(enemy))) {
+    if (enemy.type !== "wraith" && enemy.hp < enemy.maxHp && (perfMode.level < 2 || isImportantEnemy(enemy))) {
       ctx.fillStyle = "rgba(0,0,0,0.42)";
       ctx.fillRect(-enemy.r, -enemy.r - 14, enemy.r * 2, 4);
       ctx.fillStyle = "#ffdf5a";
@@ -5976,10 +6043,10 @@
     ctx.globalCompositeOperation = "lighter";
     ctx.shadowColor = p.color;
     const crowdedProjectiles = projectiles.length > 42;
-    if (perfMode.level >= 2 && p.kind !== "laser" && p.kind !== "sickle") {
+    if (perfMode.level >= 2 && p.kind !== "laser" && p.kind !== "sickle" && p.kind !== "eclipseBullet") {
       ctx.shadowBlur = 0;
       ctx.fillStyle = p.color;
-      if (p.kind === "arrow") {
+      if (p.kind === "arrow" || p.kind === "heavenArrow") {
         ctx.fillRect(-18, -2, 32, 4);
         ctx.beginPath();
         ctx.moveTo(20, 0);
@@ -5988,9 +6055,30 @@
         ctx.lineTo(8, 7);
         ctx.closePath();
         ctx.fill();
+      } else if (p.kind === "shuriken" || p.kind === "shadowShuriken") {
+        ctx.rotate(elapsed * 10);
+        ctx.beginPath();
+        for (let i = 0; i < 8; i++) {
+          const r = i % 2 ? p.r * 0.55 : p.r * 1.45;
+          const a = i * TAU / 8;
+          const x = Math.cos(a) * r;
+          const y = Math.sin(a) * r;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.closePath();
+        ctx.fill();
       } else if (p.kind === "thunder") {
         ctx.beginPath();
         ctx.arc(0, 0, p.r * 1.05, 0, TAU);
+        ctx.fill();
+      } else if (p.kind === "eclipseBullet") {
+        ctx.beginPath();
+        ctx.ellipse(0, 0, p.r * 2.35, p.r * 0.86, 0, 0, TAU);
+        ctx.fill();
+        ctx.fillStyle = "rgba(255,255,255,0.82)";
+        ctx.beginPath();
+        ctx.arc(p.r * 0.8, 0, p.r * 0.28, 0, TAU);
         ctx.fill();
       } else {
         ctx.beginPath();
@@ -6047,6 +6135,24 @@
       ctx.beginPath();
       ctx.arc(0, 0, radius * 0.72, 0, TAU);
       ctx.stroke();
+    } else if (p.kind === "eclipseBullet") {
+      ctx.shadowColor = "#ff304f";
+      ctx.shadowBlur = performanceGlow(crowdedProjectiles ? 14 : 34);
+      ctx.fillStyle = "#ff4058";
+      ctx.beginPath();
+      ctx.ellipse(0, 0, p.r * 2.9, p.r * 0.86, 0, 0, TAU);
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255, 223, 90, 0.78)";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(-p.r * 2.2, -p.r * 0.52);
+      ctx.quadraticCurveTo(0, -p.r * 1.25, p.r * 2.55, 0);
+      ctx.quadraticCurveTo(0, p.r * 1.25, -p.r * 2.2, p.r * 0.52);
+      ctx.stroke();
+      ctx.fillStyle = "#fff8d8";
+      ctx.beginPath();
+      ctx.arc(p.r * 1.35, 0, p.r * 0.33, 0, TAU);
+      ctx.fill();
     } else if (p.kind === "crane") {
       ctx.beginPath();
       ctx.moveTo(18, 0);
@@ -6055,7 +6161,17 @@
       ctx.lineTo(-10, 10);
       ctx.closePath();
       ctx.fill();
-    } else if (p.kind === "arrow") {
+    } else if (p.kind === "arrow" || p.kind === "heavenArrow") {
+      if (p.kind === "heavenArrow") {
+        ctx.shadowColor = "#ffd35a";
+        ctx.shadowBlur = performanceGlow(crowdedProjectiles ? 10 : 26);
+        ctx.strokeStyle = "rgba(255, 231, 130, 0.62)";
+        ctx.lineWidth = 8;
+        ctx.beginPath();
+        ctx.moveTo(-28, 0);
+        ctx.lineTo(22, 0);
+        ctx.stroke();
+      }
       ctx.fillRect(-22, -2, 38, 4);
       ctx.beginPath();
       ctx.moveTo(24, 0);
@@ -6063,6 +6179,30 @@
       ctx.lineTo(12, 0);
       ctx.lineTo(8, 8);
       ctx.closePath();
+      ctx.fill();
+    } else if (p.kind === "shuriken" || p.kind === "shadowShuriken") {
+      ctx.rotate(elapsed * (p.kind === "shadowShuriken" ? 16 : 12));
+      if (p.kind === "shadowShuriken") {
+        ctx.strokeStyle = "rgba(143, 108, 255, 0.46)";
+        ctx.lineWidth = 5;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.r * 2.15, 0, TAU);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      for (let i = 0; i < 8; i++) {
+        const r = i % 2 ? p.r * 0.58 : p.r * 1.65;
+        const a = i * TAU / 8;
+        const x = Math.cos(a) * r;
+        const y = Math.sin(a) * r;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = "#fff8d8";
+      ctx.beginPath();
+      ctx.arc(0, 0, p.r * 0.34, 0, TAU);
       ctx.fill();
     } else if (p.kind === "sickle") {
       ctx.strokeStyle = p.color;
@@ -6088,6 +6228,8 @@
     const alpha = Math.max(0, 1 - t);
     const core = slash.color || "#fff0a3";
     const edge = slash.edgeColor || "#d82936";
+    const sakura = slash.kind === "sakuraMoon";
+    const eclipse = slash.kind === "eclipseFang";
     const sweep = 0.82 + Math.sin(t * Math.PI) * 0.18;
     const inner = slash.r * 0.34;
     const outer = slash.r * (1.02 + t * 0.08);
@@ -6145,6 +6287,32 @@
       ctx.beginPath();
       ctx.arc(Math.cos(a) * r, Math.sin(a) * r, 2.2 + (i % 3), 0, TAU);
       ctx.fill();
+    }
+    if (sakura || eclipse) {
+      const motifCount = perfMode.level >= 2 ? 4 : 8;
+      ctx.fillStyle = sakura ? "#ffd0e5" : "#ffdf5a";
+      ctx.shadowColor = sakura ? "#ff5f9c" : "#ff304f";
+      ctx.shadowBlur = performanceGlow(12);
+      for (let i = 0; i < motifCount; i++) {
+        const a = -sweep * 0.86 + (i / Math.max(1, motifCount - 1)) * sweep * 1.72;
+        const r = tip * (0.72 + 0.26 * ((i % 3) / 2));
+        ctx.save();
+        ctx.translate(Math.cos(a) * r, Math.sin(a) * r);
+        ctx.rotate(a + elapsed * 1.2);
+        ctx.globalAlpha = alpha * 0.72;
+        ctx.beginPath();
+        if (sakura) {
+          ctx.ellipse(0, 0, 5, 2.6, 0, 0, TAU);
+        } else {
+          ctx.moveTo(0, -5);
+          ctx.lineTo(4, 0);
+          ctx.lineTo(0, 5);
+          ctx.lineTo(-4, 0);
+          ctx.closePath();
+        }
+        ctx.fill();
+        ctx.restore();
+      }
     }
     ctx.restore();
   }
@@ -6217,22 +6385,34 @@
 
   function drawPuddle(puddle) {
     const a = clamp(puddle.life / puddle.max, 0, 1);
+    const pure = puddle.kind === "pureFlood";
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = 0.2 + a * 0.28;
     const g = ctx.createRadialGradient(puddle.x, puddle.y, 0, puddle.x, puddle.y, puddle.r);
-    g.addColorStop(0, "rgba(180, 245, 255, 0.42)");
-    g.addColorStop(0.55, "rgba(82, 192, 255, 0.22)");
+    g.addColorStop(0, pure ? "rgba(238, 255, 255, 0.54)" : "rgba(180, 245, 255, 0.42)");
+    g.addColorStop(0.55, pure ? "rgba(104, 255, 230, 0.28)" : "rgba(82, 192, 255, 0.22)");
     g.addColorStop(1, "rgba(82, 192, 255, 0)");
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.ellipse(puddle.x, puddle.y, puddle.r, puddle.r * 0.58, 0, 0, TAU);
+    ctx.arc(puddle.x, puddle.y, puddle.r, 0, TAU);
     ctx.fill();
-    ctx.strokeStyle = "rgba(230, 252, 255, 0.35)";
+    ctx.strokeStyle = pure ? "rgba(238, 255, 255, 0.62)" : "rgba(230, 252, 255, 0.35)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(puddle.x, puddle.y, puddle.r * (0.76 + Math.sin(elapsed * 4) * 0.04), puddle.r * 0.42, 0, 0, TAU);
+    ctx.arc(puddle.x, puddle.y, puddle.r * (0.72 + Math.sin(elapsed * 4) * 0.04), 0, TAU);
     ctx.stroke();
+    if (pure && perfMode.level < 2) {
+      ctx.globalAlpha *= 0.58;
+      ctx.strokeStyle = "rgba(127, 247, 255, 0.5)";
+      ctx.lineWidth = 1.5;
+      for (let i = 0; i < 3; i++) {
+        const rr = puddle.r * (0.32 + i * 0.19 + Math.sin(elapsed * 2.2 + i) * 0.025);
+        ctx.beginPath();
+        ctx.arc(puddle.x, puddle.y, rr, 0, TAU);
+        ctx.stroke();
+      }
+    }
     ctx.restore();
   }
 
@@ -6269,12 +6449,25 @@
     ctx.globalCompositeOperation = "lighter";
     ctx.globalAlpha = 1 - t;
     ctx.strokeStyle = wave.color;
-    ctx.lineWidth = 5 * (1 - t);
+    ctx.lineWidth = (wave.kind === "warThunder" ? 7 : 5) * (1 - t);
     ctx.shadowColor = wave.color;
-    ctx.shadowBlur = performanceGlow(18);
+    ctx.shadowBlur = performanceGlow(wave.kind === "warThunder" ? 28 : 18);
     ctx.beginPath();
     ctx.arc(wave.x, wave.y, wave.r + t * 145, 0, TAU);
     ctx.stroke();
+    if (wave.kind === "warThunder" && perfMode.level < 2) {
+      ctx.strokeStyle = "rgba(255, 248, 210, 0.72)";
+      ctx.lineWidth = 2 * (1 - t);
+      for (let i = 0; i < 8; i++) {
+        const a = i * TAU / 8 + t * 0.8;
+        const inner = wave.r + t * 78;
+        const outer = wave.r + t * 145;
+        ctx.beginPath();
+        ctx.moveTo(wave.x + Math.cos(a) * inner, wave.y + Math.sin(a) * inner);
+        ctx.lineTo(wave.x + Math.cos(a + 0.08) * outer, wave.y + Math.sin(a + 0.08) * outer);
+        ctx.stroke();
+      }
+    }
     ctx.restore();
   }
 
