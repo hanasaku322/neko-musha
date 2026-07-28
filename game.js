@@ -4046,7 +4046,6 @@
         kind: evolved ? "heavenArrow" : "arrow"
       });
     }
-    shockwaves.push({ x: player.x, y: player.y, r: radius, life: 0.3, max: 0.3, color: evolved ? "#ffd35a" : "#ff7438", power: 0 });
   }
 
   function doOrbitDamage(dt) {
