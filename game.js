@@ -4242,12 +4242,13 @@
 
   function doPurifyingSake() {
     const evolved = evolvedItems.has("pureFlood");
-    const baseLevel = clamp(evolved ? player.sake - 3 : player.sake, 1, 5);
-    const count = evolved ? 12 : clamp(2 + (baseLevel - 1) * 2, 2, 10);
+    const sakeLevel = evolved ? ITEM_MAX_LEVEL : clamp(acquiredItems.get("sake") || 1, 1, ITEM_MAX_LEVEL);
+    const powerLevel = clamp(evolved ? player.sake - 3 : player.sake, 1, 5);
+    const count = evolved ? 12 : clamp(sakeLevel + 1, 2, 10);
     const areaMul = Math.min(player.area, evolved ? 1.18 : 1.12);
-    const ring = (evolved ? 82 + baseLevel * 13 : 48 + baseLevel * 12) * areaMul;
-    const puddleRadius = (evolved ? 31 + baseLevel * 4.2 : 22 + baseLevel * 3.4) * areaMul;
-    const puddleDamage = scaledDamage(player.damage * (evolved ? 0.12 + baseLevel * 0.018 : 0.08 + baseLevel * 0.014));
+    const ring = (evolved ? 108 + sakeLevel * 15 : 58 + sakeLevel * 14) * areaMul;
+    const puddleRadius = (evolved ? 42 + sakeLevel * 5 : 27 + sakeLevel * 4.4) * areaMul;
+    const puddleDamage = scaledDamage(player.damage * (evolved ? 0.12 + powerLevel * 0.018 : 0.08 + powerLevel * 0.014));
     for (let i = 0; i < count; i++) {
       const angle = i * TAU / Math.max(1, count) + elapsed * 0.18;
       const x = player.x + Math.cos(angle) * ring;
