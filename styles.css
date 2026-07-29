@@ -1314,7 +1314,15 @@ h2 {
   position: absolute;
   top: max(14px, env(safe-area-inset-top) + 10px);
   left: max(14px, env(safe-area-inset-left) + 10px);
-  z-index: 1;
+  z-index: 2;
+  min-width: 96px;
+}
+
+.archive-viewer-bottom {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right) + 10px);
+  bottom: max(14px, env(safe-area-inset-bottom) + 10px);
+  z-index: 2;
   min-width: 96px;
 }
 

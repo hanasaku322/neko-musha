@@ -2058,6 +2058,7 @@
   function openRecords() {
     state = "records";
     gamepadChoiceIndex = 0;
+    arrangeMenuCloseButtons();
     titleScreen.classList.add("hidden");
     gameOverScreen.classList.add("hidden");
     endingScreen.classList.add("hidden");
@@ -2130,7 +2131,7 @@
           <span class="encyclopedia-type">${asset.group}</span>
           <h3>${asset.name}</h3>
           <p>${asset.desc}</p>
-          ${asset.type === "audio" ? `<audio class="archive-audio" controls preload="none" src="${asset.src}"></audio>` : `<button class="archive-link" type="button" data-archive-image="${asset.src}" data-archive-name="${asset.name}">画像を拡大</button>`}
+          ${asset.type === "audio" ? `<audio class="archive-audio" controls preload="none" src="${asset.src}"></audio>` : `<button class="archive-link" type="button" data-archive-image="${asset.src}" data-archive-name="${asset.name}">画像を開く</button>`}
         </div>
       </article>
     `;
@@ -2148,12 +2149,25 @@
     archiveViewer.innerHTML = `
       <button class="archive-viewer-back primary-button" type="button">戻る</button>
       <img src="${src}" alt="${name || "資料画像"}">
+      <button class="archive-viewer-bottom primary-button" type="button">戻る</button>
     `;
-    archiveViewer.querySelector("button")?.addEventListener("click", closeArchiveViewer);
+    archiveViewer.querySelectorAll("button").forEach(button => button.addEventListener("click", closeArchiveViewer));
     archiveViewer.addEventListener("click", event => {
       if (event.target === archiveViewer) closeArchiveViewer();
     });
     document.body.appendChild(archiveViewer);
+  }
+
+  function arrangeMenuCloseButtons() {
+    const shopPanel = shopScreen?.querySelector(".shop-panel");
+    const recordsPanel = recordsScreen?.querySelector(".records-panel");
+    if (shopPanel && shopCloseButton && shopPanel.firstElementChild !== shopCloseButton) {
+      shopPanel.insertBefore(shopCloseButton, shopPanel.firstElementChild);
+    }
+    if (recordsPanel && recordsCloseButton && recordsPanel.firstElementChild !== recordsCloseButton) {
+      recordsCloseButton.textContent = shopCloseButton?.textContent || recordsCloseButton.textContent;
+      recordsPanel.insertBefore(recordsCloseButton, recordsPanel.firstElementChild);
+    }
   }
 
   function stopArchiveAudio() {
@@ -2278,6 +2292,7 @@
   function openShop() {
     state = "shop";
     gamepadChoiceIndex = 0;
+    arrangeMenuCloseButtons();
     titleScreen.classList.add("hidden");
     gameOverScreen.classList.add("hidden");
     endingScreen.classList.add("hidden");
@@ -7010,9 +7025,12 @@
     renderEncyclopedia(button.dataset.encyclopediaTab);
   });
   encyclopediaList?.addEventListener("click", event => {
-    const button = event.target.closest("[data-archive-image]");
-    if (!button) return;
-    openArchiveViewer(button.dataset.archiveImage, button.dataset.archiveName);
+    const control = event.target.closest("[data-archive-image], .archive-link");
+    if (!control) return;
+    const src = control.dataset.archiveImage || control.getAttribute("href");
+    if (!src) return;
+    event.preventDefault();
+    openArchiveViewer(src, control.dataset.archiveName || control.textContent);
   });
   saveResetButton.addEventListener("click", resetSaveData);
   saveSlots.addEventListener("click", event => {
@@ -7048,5 +7066,6 @@
   renderShop();
   renderSaveSlots();
   updateTitleMoney();
+  arrangeMenuCloseButtons();
   requestAnimationFrame(loop);
 })();
