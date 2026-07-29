@@ -1453,7 +1453,7 @@
   }
 
   function makeSampledAudio() {
-    const bgm = bgmTrack || new Audio("assets/japanese-fight-track.wav");
+    const bgm = bgmTrack || new Audio("assets/bgm/field-theme.mp3");
     bgm.loop = true;
     bgm.volume = 0.42;
     const jackpotLoop = new Audio("assets/sfx/slot-spin.ogg");
