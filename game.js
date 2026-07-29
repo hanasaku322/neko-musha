@@ -4408,7 +4408,7 @@
     const ring = (evolved ? 142 + sakeLevel * 20 : 82 + sakeLevel * 18) * areaMul;
     const puddleRadius = (evolved ? 42 + sakeLevel * 5 : 27 + sakeLevel * 4.4) * areaMul;
     const puddleDamage = scaledDamage(player.damage * (evolved ? 0.065 + powerLevel * 0.01 : 0.045 + powerLevel * 0.008));
-    const sequenceInterval = evolved ? Math.max(0.075, 0.17 - sakeLevel * 0.008) : Math.max(0.055, 0.24 - sakeLevel * 0.02);
+    const sequenceInterval = evolved ? Math.max(0.095, 0.23 - sakeLevel * 0.011) : Math.max(0.08, 0.34 - sakeLevel * 0.026);
     const durationMul = Math.min(player.duration, evolved ? 1.12 : 1.08);
     const puddleLife = (evolved ? 1.82 + sakeLevel * 0.06 : 1.42 + sakeLevel * 0.075) * durationMul;
     for (let i = 0; i < count; i++) {
