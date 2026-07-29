@@ -4405,23 +4405,29 @@
     const areaMul = Math.min(player.area, evolved ? 1.18 : 1.12);
     const ring = (evolved ? 142 + sakeLevel * 20 : 82 + sakeLevel * 18) * areaMul;
     const puddleRadius = (evolved ? 42 + sakeLevel * 5 : 27 + sakeLevel * 4.4) * areaMul;
-    const puddleDamage = scaledDamage(player.damage * (evolved ? 0.12 + powerLevel * 0.018 : 0.08 + powerLevel * 0.014));
+    const puddleDamage = scaledDamage(player.damage * (evolved ? 0.065 + powerLevel * 0.01 : 0.045 + powerLevel * 0.008));
+    const sequenceInterval = evolved ? Math.max(0.05, 0.12 - sakeLevel * 0.007) : Math.max(0.055, 0.24 - sakeLevel * 0.02);
+    const durationMul = Math.min(player.duration, evolved ? 1.12 : 1.08);
+    const puddleLife = (evolved ? 1.82 + sakeLevel * 0.06 : 1.42 + sakeLevel * 0.075) * durationMul;
     for (let i = 0; i < count; i++) {
       const angle = i * TAU / Math.max(1, count) + elapsed * 0.18;
       const x = player.x + Math.cos(angle) * ring;
       const y = player.y + Math.sin(angle) * ring;
+      const delay = i * sequenceInterval;
       puddles.push({
         x,
         y,
         r: puddleRadius,
-        life: 2.65 + player.sake * 0.16,
-        max: 2.65 + player.sake * 0.16,
+        life: puddleLife,
+        max: puddleLife,
+        delay,
+        appeared: delay <= 0,
         tick: 0,
         damage: puddleDamage,
         color: evolved ? "#7ff7ff" : "#6fc8ff",
         kind: evolved ? "pureFlood" : "sake"
       });
-      shockwaves.push({ x, y, r: 16, life: 0.34, max: 0.34, color: "#6fc8ff", power: 0 });
+      if (delay <= 0) shockwaves.push({ x, y, r: 16, life: 0.28, max: 0.28, color: "#6fc8ff", power: 0 });
     }
   }
 
@@ -5040,8 +5046,10 @@
       player.sickleTimer = cooldownTime(2.1 - player.sickle * 0.14, 0.72);
     }
     if (player.sake && player.sakeTimer <= 0) {
+      const evolvedSake = evolvedItems.has("pureFlood");
+      const sakeLevel = evolvedSake ? ITEM_MAX_LEVEL : clamp(acquiredItems.get("sake") || 1, 1, ITEM_MAX_LEVEL);
       doPurifyingSake();
-      player.sakeTimer = cooldownTime(2.7 - player.sake * 0.16, 0.88);
+      player.sakeTimer = cooldownTime((evolvedSake ? 2.35 : 3.15) - sakeLevel * (evolvedSake ? 0.11 : 0.16), evolvedSake ? 0.95 : 1.15);
     }
     if (player.aura > 0) doAuraDamage(dt);
     updateProjectiles(dt);
@@ -5098,6 +5106,14 @@
   function updatePuddles(dt) {
     for (let i = puddles.length - 1; i >= 0; i--) {
       const puddle = puddles[i];
+      if (puddle.delay > 0) {
+        puddle.delay -= dt;
+        if (puddle.delay <= 0 && !puddle.appeared) {
+          puddle.appeared = true;
+          shockwaves.push({ x: puddle.x, y: puddle.y, r: 14, life: 0.24, max: 0.24, color: puddle.color || "#6fc8ff", power: 0 });
+        }
+        continue;
+      }
       puddle.life -= dt;
       puddle.tick -= dt;
       if (puddle.life <= 0) {
@@ -6560,30 +6576,35 @@
   }
 
   function drawPuddle(puddle) {
+    if (puddle.delay > 0) return;
     const a = clamp(puddle.life / puddle.max, 0, 1);
     const pure = puddle.kind === "pureFlood";
+    const born = Math.max(0, puddle.max - puddle.life);
+    const appear = clamp(born / 0.18, 0, 1);
+    const appearEase = 1 - Math.pow(1 - appear, 2);
+    const radius = puddle.r * (0.34 + appearEase * 0.66);
     ctx.save();
     ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = 0.2 + a * 0.28;
-    const g = ctx.createRadialGradient(puddle.x, puddle.y, 0, puddle.x, puddle.y, puddle.r);
+    ctx.globalAlpha = (0.16 + a * 0.24) * appear;
+    const g = ctx.createRadialGradient(puddle.x, puddle.y, 0, puddle.x, puddle.y, radius);
     g.addColorStop(0, pure ? "rgba(238, 255, 255, 0.54)" : "rgba(180, 245, 255, 0.42)");
     g.addColorStop(0.55, pure ? "rgba(104, 255, 230, 0.28)" : "rgba(82, 192, 255, 0.22)");
     g.addColorStop(1, "rgba(82, 192, 255, 0)");
     ctx.fillStyle = g;
     ctx.beginPath();
-    ctx.arc(puddle.x, puddle.y, puddle.r, 0, TAU);
+    ctx.arc(puddle.x, puddle.y, radius, 0, TAU);
     ctx.fill();
     ctx.strokeStyle = pure ? "rgba(238, 255, 255, 0.62)" : "rgba(230, 252, 255, 0.35)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.arc(puddle.x, puddle.y, puddle.r * (0.72 + Math.sin(elapsed * 4) * 0.04), 0, TAU);
+    ctx.arc(puddle.x, puddle.y, radius * (0.72 + Math.sin(elapsed * 4) * 0.04), 0, TAU);
     ctx.stroke();
     if (pure && perfMode.level < 2) {
       ctx.globalAlpha *= 0.58;
       ctx.strokeStyle = "rgba(127, 247, 255, 0.5)";
       ctx.lineWidth = 1.5;
       for (let i = 0; i < 3; i++) {
-        const rr = puddle.r * (0.32 + i * 0.19 + Math.sin(elapsed * 2.2 + i) * 0.025);
+        const rr = radius * (0.32 + i * 0.19 + Math.sin(elapsed * 2.2 + i) * 0.025);
         ctx.beginPath();
         ctx.arc(puddle.x, puddle.y, rr, 0, TAU);
         ctx.stroke();
