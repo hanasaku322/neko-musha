@@ -1,6 +1,7 @@
 (() => {
   const canvas = document.getElementById("game");
   const ctx = canvas.getContext("2d", { alpha: false });
+  const viewportMeta = document.querySelector("meta[name='viewport']");
   const hpBar = document.getElementById("hpBar");
   const xpBar = document.getElementById("xpBar");
   const levelLabel = document.getElementById("levelLabel");
@@ -2168,6 +2169,12 @@
       recordsCloseButton.textContent = shopCloseButton?.textContent || recordsCloseButton.textContent;
       recordsPanel.insertBefore(recordsCloseButton, recordsPanel.firstElementChild);
     }
+    if (recordsCloseButton && shopCloseButton) recordsCloseButton.textContent = shopCloseButton.textContent;
+  }
+
+  function lockPageZoom() {
+    viewportMeta?.setAttribute("content", "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover");
+    window.scrollTo(0, 0);
   }
 
   function stopArchiveAudio() {
@@ -2595,6 +2602,7 @@
   }
 
   function closeChoiceScreen() {
+    lockPageZoom();
     levelScreen.classList.add("hidden");
     levelScreen.classList.remove("jackpot-screen");
     levelScreen.querySelector("h2").textContent = "秘宝を選択";
@@ -2775,6 +2783,7 @@
       button.addEventListener("click", () => {
         if (performance.now() < levelChoiceReadyAt) return;
         addItem(item);
+        lockPageZoom();
         levelScreen.classList.add("hidden");
         burst(player.x, player.y, "#ffdf5a", 34, 9);
         shockwaves.push({ x: player.x, y: player.y, r: 24, life: 0.5, max: 0.5, color: "#ffdf5a", power: 0 });
@@ -2796,6 +2805,7 @@
     player.hp = Math.min(player.maxHp, player.hp + 18);
     score += 80 + player.level * 10;
     showToast({ sprite: 11 }, "秘宝満杯: 小判と回復に変換");
+    lockPageZoom();
     state = "playing";
     levelScreen.classList.add("hidden");
     upgradeChoices.innerHTML = "";
@@ -2945,6 +2955,7 @@
 
         const resume = () => {
           if (state !== "level") return;
+          lockPageZoom();
           document.removeEventListener("keydown", resume);
           levelScreen.classList.add("hidden");
           levelScreen.querySelector("h2").textContent = "秘宝を選択";
@@ -3006,6 +3017,7 @@
 
       const resume = () => {
         if (state !== "level") return;
+        lockPageZoom();
         document.removeEventListener("keydown", resume);
         levelScreen.classList.add("hidden");
         levelScreen.classList.remove("jackpot-screen");
@@ -6840,6 +6852,12 @@
     resetTouchStickPosition();
   }
 
+  function preventPageZoomGesture(event) {
+    const allowEndingImageZoom = state === "ending" && event.target?.closest?.(".ending-image-viewport");
+    if (allowEndingImageZoom) return;
+    event.preventDefault();
+  }
+
   function axisWithDeadzone(value, deadzone = 0.18) {
     const abs = Math.abs(value || 0);
     if (abs < deadzone) return 0;
@@ -6993,6 +7011,13 @@
       pointer.id = null;
     }
   });
+  document.addEventListener("gesturestart", preventPageZoomGesture, { passive: false });
+  document.addEventListener("gesturechange", preventPageZoomGesture, { passive: false });
+  document.addEventListener("gestureend", preventPageZoomGesture, { passive: false });
+  document.addEventListener("touchmove", event => {
+    if (event.touches && event.touches.length > 1 && state !== "ending") event.preventDefault();
+  }, { passive: false });
+  levelScreen.addEventListener("dblclick", event => event.preventDefault());
   if (touchStick) {
     touchStick.addEventListener("pointerdown", event => {
       event.preventDefault();
