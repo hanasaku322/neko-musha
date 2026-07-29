@@ -5480,6 +5480,14 @@
     return enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord" || enemy.type === "senryoThief";
   }
 
+  function shouldShowEnemyHpBar(enemy) {
+    if (enemy.hp >= enemy.maxHp) return false;
+    if (elapsed >= 480) {
+      return enemy.type === "armored" || enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord" || enemy.type === "senryoThief";
+    }
+    return enemy.type !== "wraith";
+  }
+
   function getCameraZoom() {
     const touch = navigator.maxTouchPoints > 0;
     const touchLandscape = touch && W > H;
@@ -5961,7 +5969,7 @@
       ctx.scale(pulse, pulse);
       drawImageRounded(fallback, -size / 2, -size / 2, size, size);
     }
-    if (enemy.type !== "wraith" && enemy.hp < enemy.maxHp && (perfMode.level < 2 || isImportantEnemy(enemy))) {
+    if (shouldShowEnemyHpBar(enemy) && (perfMode.level < 2 || isImportantEnemy(enemy) || enemy.type === "armored")) {
       ctx.fillStyle = "rgba(0,0,0,0.42)";
       ctx.fillRect(-enemy.r, -enemy.r - 14, enemy.r * 2, 4);
       ctx.fillStyle = "#ffdf5a";
