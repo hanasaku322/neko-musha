@@ -185,6 +185,7 @@
   let debugSfxCount = 0;
   let debugSfxRate = 0;
   let debugSfxTimer = 0;
+  let lastTouchEndAt = 0;
   let gamepadInput = { mx: 0, my: 0 };
   let gamepadPrev = { buttons: [], navX: 0, navY: 0 };
   let gamepadChoiceIndex = 0;
@@ -2085,6 +2086,7 @@
   }
 
   function closeRecords() {
+    resetScreenZoomState();
     state = "title";
     gamepadChoiceIndex = 0;
     endRecordsTouchScroll();
@@ -2232,6 +2234,17 @@
     window.scrollTo(0, 0);
   }
 
+  function resetScreenZoomState() {
+    lockPageZoom();
+    resetEndingZoom();
+    closeArchiveViewer();
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    endingImage?.style.setProperty("--ending-zoom", "1");
+    endingImage?.style.setProperty("--ending-pan-x", "0px");
+    endingImage?.style.setProperty("--ending-pan-y", "0px");
+  }
+
   function stopArchiveAudio() {
     encyclopediaList?.querySelectorAll("audio").forEach(track => {
       track.pause();
@@ -2345,6 +2358,7 @@
       if (audio) audio.duck(true);
       return;
     }
+    resetScreenZoomState();
     state = "title";
     titleScreen.classList.remove("hidden");
     renderSaveSlots();
@@ -2367,6 +2381,7 @@
   }
 
   function closeShop() {
+    resetScreenZoomState();
     state = "title";
     gamepadChoiceIndex = 0;
     shopScreen.classList.add("hidden");
@@ -2523,6 +2538,7 @@
   }
 
   function showSynthesisPrompt(recipe) {
+    resetScreenZoomState();
     const parts = recipe.requires.map(findItemDef).filter(Boolean);
     state = "level";
     gamepadChoiceIndex = 0;
@@ -2657,7 +2673,7 @@
   }
 
   function closeChoiceScreen() {
-    lockPageZoom();
+    resetScreenZoomState();
     levelScreen.classList.add("hidden");
     levelScreen.classList.remove("jackpot-screen");
     levelScreen.querySelector("h2").textContent = "秘宝を選択";
@@ -2701,6 +2717,7 @@
   }
 
   function showMaxedFallbackChoice(title = "秘宝満杯") {
+    resetScreenZoomState();
     state = "level";
     levelScreen.classList.remove("hidden");
     levelScreen.classList.remove("jackpot-screen");
@@ -2760,6 +2777,7 @@
   }
 
   function showTreasureChoice(tier, chest) {
+    resetScreenZoomState();
     const choices = getTreasureChoices(tier);
     if (!choices.length) {
       resolveMaxedFallbackReward(`${chest.name}の秘宝`);
@@ -2814,6 +2832,7 @@
   }
 
   function pauseForLevel() {
+    resetScreenZoomState();
     const choices = getChoices();
     if (!choices.length) {
       resolveMaxedFallbackReward("秘宝満杯");
@@ -3506,6 +3525,7 @@
   }
 
   function returnToTitle() {
+    resetScreenZoomState();
     state = "title";
     testMode = false;
     pauseReturnState = "playing";
@@ -3519,7 +3539,6 @@
     pointer.dy = 0;
     centerTouchKnob();
     resetTouchStickPosition();
-    resetEndingZoom();
     gameOverScreen.classList.add("hidden");
     endingScreen.classList.add("hidden");
     levelScreen.classList.add("hidden");
@@ -7013,6 +7032,14 @@
     event.preventDefault();
   }
 
+  function preventDoubleTapZoom(event) {
+    const allowEndingImageZoom = state === "ending" && event.target?.closest?.(".ending-image-viewport");
+    if (allowEndingImageZoom) return;
+    const now = performance.now();
+    if (now - lastTouchEndAt < 340) event.preventDefault();
+    lastTouchEndAt = now;
+  }
+
   function axisWithDeadzone(value, deadzone = 0.18) {
     const abs = Math.abs(value || 0);
     if (abs < deadzone) return 0;
@@ -7169,6 +7196,7 @@
   document.addEventListener("gesturestart", preventPageZoomGesture, { passive: false });
   document.addEventListener("gesturechange", preventPageZoomGesture, { passive: false });
   document.addEventListener("gestureend", preventPageZoomGesture, { passive: false });
+  document.addEventListener("touchend", preventDoubleTapZoom, { passive: false });
   document.addEventListener("touchmove", event => {
     if (event.touches && event.touches.length > 1 && state !== "ending") event.preventDefault();
   }, { passive: false });
