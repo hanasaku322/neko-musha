@@ -146,6 +146,7 @@
     imagePoint(878, 188),
     imagePoint(862, 160)
   ];
+  const WALKABLE_SAFE_RECT = { x: -700, y: -160, w: 1400, h: 680 };
   const fixedChestSpots = [
     { ...imagePoint(420, 310), tier: "wood" },
     { ...imagePoint(702, 265), tier: "red" },
@@ -4807,6 +4808,18 @@
     entity.y = p.y;
   }
 
+  function isInSafeWalkableRect(entity, radius) {
+    return entity.x > WALKABLE_SAFE_RECT.x + radius
+      && entity.x < WALKABLE_SAFE_RECT.x + WALKABLE_SAFE_RECT.w - radius
+      && entity.y > WALKABLE_SAFE_RECT.y + radius
+      && entity.y < WALKABLE_SAFE_RECT.y + WALKABLE_SAFE_RECT.h - radius;
+  }
+
+  function resolveMapCollisionFast(entity, radius) {
+    if (isInSafeWalkableRect(entity, radius)) return;
+    resolveMapCollision(entity, radius);
+  }
+
   function spawnPointAroundPlayer(initial) {
     for (let tries = 0; tries < 18; tries++) {
       const angle = rand(0, TAU);
@@ -4849,7 +4862,7 @@
     const canAddRing = shockwaves.length < ringLimit && (strongEnemy || killRingCooldown <= 0);
     if (!canAddRing) return;
     const life = boss ? 0.34 : strongEnemy ? 0.28 : 0.18;
-    shockwaves.push({ x: enemy.x, y: enemy.y, r: enemy.r * (boss ? 1 : 0.75), life, max: life, color, power: 0 });
+    pushShockwave({ x: enemy.x, y: enemy.y, r: enemy.r * (boss ? 1 : 0.75), life, max: life, color, power: 0 }, strongEnemy);
     if (!strongEnemy) killRingCooldown = perfMode.level >= 2 ? 0.16 : perfMode.level >= 1 ? 0.11 : 0.075;
   }
 
@@ -5026,14 +5039,14 @@
     const tryX = { x: player.x + stepX, y: player.y };
     const tryY = { x: player.x, y: player.y + stepY };
     const tryBoth = { x: player.x + stepX, y: player.y + stepY };
-    if (isWalkablePoint(tryBoth, radius)) {
+    if (isInSafeWalkableRect(tryBoth, radius) || isWalkablePoint(tryBoth, radius)) {
       player.x = tryBoth.x;
       player.y = tryBoth.y;
     } else {
-      if (isWalkablePoint(tryX, radius)) player.x = tryX.x;
-      if (isWalkablePoint(tryY, radius)) player.y = tryY.y;
+      if (isInSafeWalkableRect(tryX, radius) || isWalkablePoint(tryX, radius)) player.x = tryX.x;
+      if (isInSafeWalkableRect(tryY, radius) || isWalkablePoint(tryY, radius)) player.y = tryY.y;
     }
-    if (!isWalkablePoint(player, radius)) resolveMapCollision(player, radius);
+    if (!isInSafeWalkableRect(player, radius) && !isWalkablePoint(player, radius)) resolveMapCollisionFast(player, radius);
     player.invuln = Math.max(0, player.invuln - dt);
     player.poseTimer = Math.max(0, player.poseTimer - dt);
     player.beamPoseTimer = Math.max(0, player.beamPoseTimer - dt);
@@ -5116,6 +5129,7 @@
     const projectileCullDistance = sqr(Math.max(W, H) * 0.92 / Math.max(0.58, getCameraZoom()) + 360);
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i];
+      const hitRadius = getProjectileHitRadius(p);
       if (p.homing) {
         const target = nearestEnemies(1, 620)[0];
         if (target) {
@@ -5137,7 +5151,12 @@
         continue;
       }
       for (const enemy of enemies) {
-        if (d2(p, enemy) < sqr(enemy.r + getProjectileHitRadius(p))) {
+        const hit = enemy.r + hitRadius;
+        const dx = p.x - enemy.x;
+        if (dx > hit || dx < -hit) continue;
+        const dy = p.y - enemy.y;
+        if (dy > hit || dy < -hit) continue;
+        if (dx * dx + dy * dy < hit * hit) {
           damageEnemy(enemy, p.damage, Math.atan2(p.vy, p.vx));
           if (p.area) areaDamage(p.x, p.y, p.area, p.damage * 0.55, p.color);
           p.pierce -= 1;
@@ -5154,10 +5173,12 @@
     const limit = sqr(radius);
     for (const enemy of enemies) {
       const dx = enemy.x - x;
+      if (dx > radius || dx < -radius) continue;
       const dy = enemy.y - y;
+      if (dy > radius || dy < -radius) continue;
       if (dx * dx + dy * dy < limit) damageEnemy(enemy, damage, Math.atan2(dy, dx));
     }
-    shockwaves.push({ x, y, r: 18, life: 0.26, max: 0.26, color, power: 0 });
+    pushShockwave({ x, y, r: 18, life: 0.26, max: 0.26, color, power: 0 });
   }
 
   function updatePuddles(dt) {
@@ -5167,7 +5188,7 @@
         puddle.delay -= dt;
         if (puddle.delay <= 0 && !puddle.appeared) {
           puddle.appeared = true;
-          shockwaves.push({ x: puddle.x, y: puddle.y, r: 14, life: 0.24, max: 0.24, color: puddle.color || "#6fc8ff", power: 0 });
+          pushShockwave({ x: puddle.x, y: puddle.y, r: 14, life: 0.24, max: 0.24, color: puddle.color || "#6fc8ff", power: 0 });
         }
         continue;
       }
@@ -5191,8 +5212,11 @@
 
   function isEnemyInPuddle(enemy, puddle) {
     const dx = enemy.x - puddle.x;
+    const hit = puddle.r + enemy.r * 0.42;
+    if (dx > hit || dx < -hit) return false;
     const dy = enemy.y - puddle.y;
-    return dx * dx + dy * dy < sqr(puddle.r + enemy.r * 0.42);
+    if (dy > hit || dy < -hit) return false;
+    return dx * dx + dy * dy < hit * hit;
   }
 
   function getProjectileHitRadius(p) {
@@ -5230,7 +5254,7 @@
     enemy.vy *= 0.82;
     enemy.x += enemy.vx * dt;
     enemy.y += enemy.vy * dt;
-    resolveMapCollision(enemy, enemy.r * 0.78);
+    resolveMapCollisionFast(enemy, enemy.r * 0.78);
     enemy.sparkleCd = Math.max(0, (enemy.sparkleCd || 0) - dt);
     if (enemy.sparkleCd <= 0) {
       const len = Math.hypot(enemy.vx, enemy.vy) || 1;
@@ -5303,7 +5327,7 @@
       enemy.vy *= enemy.type === "armored" || enemy.type === "boss" || enemy.type === "overlord" ? 0.9 : 0.86;
       enemy.x += enemy.vx * dt;
       enemy.y += enemy.vy * dt;
-      if (!isFlyingEnemy(enemy)) resolveMapCollision(enemy, enemy.r * 0.72);
+      if (!isFlyingEnemy(enemy)) resolveMapCollisionFast(enemy, enemy.r * 0.72);
       enemy.hit = Math.max(0, enemy.hit - dt);
       const contactRadius = getEnemyContactRadius(enemy);
       if (d2(enemy, player) < sqr(contactRadius)) {
@@ -5344,7 +5368,7 @@
     enemy.castFired = false;
     enemy.vx *= 0.18;
     enemy.vy *= 0.18;
-    shockwaves.push({ x: enemy.x, y: enemy.y, r: enemy.r * 0.6, life: 0.44, max: 0.44, color: "#ff4058", power: 0 });
+    pushShockwave({ x: enemy.x, y: enemy.y, r: enemy.r * 0.6, life: 0.44, max: 0.44, color: "#ff4058", power: 0 }, true);
     burst(enemy.x, enemy.y, "#ff4058", 18, 7);
   }
 
@@ -5368,7 +5392,7 @@
         kind: "overlordBullet"
       });
     }
-    shockwaves.push({ x: enemy.x, y: enemy.y, r: enemy.r, life: 0.38, max: 0.38, color: "#ffdf5a", power: 0 });
+    pushShockwave({ x: enemy.x, y: enemy.y, r: enemy.r, life: 0.38, max: 0.38, color: "#ffdf5a", power: 0 }, true);
     camera.shake = Math.max(camera.shake, 4);
   }
 
@@ -5433,9 +5457,11 @@
     const magnetLimit = sqr(magnet);
     for (let i = gems.length - 1; i >= 0; i--) {
       const g = gems[i];
-      const dd = d2(g, player);
+      const dx = player.x - g.x;
+      const dy = player.y - g.y;
+      const dd = dx * dx + dy * dy;
       if (dd < magnetLimit) {
-        const a = Math.atan2(player.y - g.y, player.x - g.x);
+        const a = Math.atan2(dy, dx);
         const pull = clamp((magnet - Math.sqrt(dd)) / magnet, 0, 1);
         g.vx += Math.cos(a) * (380 + pull * 850) * dt;
         g.vy += Math.sin(a) * (380 + pull * 850) * dt;
@@ -5583,6 +5609,15 @@
       }
       if (texts.length > textLimit) texts.splice(0, texts.length - textLimit);
     }
+  }
+
+  function pushShockwave(wave, important = false) {
+    if (!important && perfMode.level > 0) {
+      const limit = perfMode.level >= 2 ? 8 : 14;
+      if (shockwaves.length >= limit) return;
+      if (!isInDrawRange(wave, performanceDrawMargin(280), getCameraZoom())) return;
+    }
+    shockwaves.push(wave);
   }
 
   function updateList(list, dt, fn = null) {
