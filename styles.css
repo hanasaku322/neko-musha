@@ -509,6 +509,11 @@ h2 {
   overflow: auto;
 }
 
+#shopCloseButton {
+  order: -10;
+  align-self: flex-start;
+}
+
 .shop-heading {
   display: flex;
   align-items: flex-start;
@@ -874,12 +879,21 @@ h2 {
 
 .records-panel {
   width: min(920px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: 22px;
   border: 1px solid rgba(255, 232, 164, 0.38);
   border-radius: 8px;
   background: rgba(9, 5, 5, 0.82);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.58);
   text-align: center;
+}
+
+#recordsCloseButton {
+  order: -10;
+  align-self: flex-start;
+  margin-bottom: 10px;
 }
 
 .records-panel h2 {
@@ -892,6 +906,7 @@ h2 {
 }
 
 .records-card {
+  width: 100%;
   overflow: hidden;
   margin-bottom: 18px;
   border: 1px solid rgba(255, 230, 162, 0.42);
@@ -1269,9 +1284,38 @@ h2 {
   border-radius: 7px;
   background: rgba(255, 232, 164, 0.1);
   color: #ffe9ad;
+  font: inherit;
   font-size: 12px;
   font-weight: 900;
   text-decoration: none;
+  cursor: pointer;
+}
+
+.archive-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top) + 14px) max(18px, env(safe-area-inset-right) + 14px) max(18px, env(safe-area-inset-bottom) + 14px) max(18px, env(safe-area-inset-left) + 14px);
+  background: rgba(4, 3, 4, 0.9);
+  backdrop-filter: blur(8px);
+}
+
+.archive-viewer img {
+  max-width: min(96vw, 1440px);
+  max-height: min(88dvh, 940px);
+  object-fit: contain;
+  border-radius: 8px;
+  box-shadow: 0 22px 80px rgba(0, 0, 0, 0.62);
+}
+
+.archive-viewer-back {
+  position: absolute;
+  top: max(14px, env(safe-area-inset-top) + 10px);
+  left: max(14px, env(safe-area-inset-left) + 10px);
+  z-index: 1;
+  min-width: 96px;
 }
 
 .pause-screen {

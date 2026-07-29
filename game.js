@@ -175,6 +175,7 @@
   let frameCarry = 0;
   let state = "title";
   let encyclopediaReturnState = "title";
+  let archiveViewer = null;
   let keys = new Set();
   let pointer = { x: 0, y: 0, startX: 0, startY: 0, id: null, active: false, mode: "screen", dx: 0, dy: 0 };
   let endingZoom = { scale: 1, x: 0, y: 0, pointers: new Map(), startScale: 1, startX: 0, startY: 0, startMidX: 0, startMidY: 0, startDistance: 1, tapX: 0, tapY: 0, tapTime: 0, lastTap: 0 };
@@ -2129,10 +2130,30 @@
           <span class="encyclopedia-type">${asset.group}</span>
           <h3>${asset.name}</h3>
           <p>${asset.desc}</p>
-          ${asset.type === "audio" ? `<audio class="archive-audio" controls preload="none" src="${asset.src}"></audio>` : `<a class="archive-link" href="${asset.src}" target="_blank" rel="noopener">画像を開く</a>`}
+          ${asset.type === "audio" ? `<audio class="archive-audio" controls preload="none" src="${asset.src}"></audio>` : `<button class="archive-link" type="button" data-archive-image="${asset.src}" data-archive-name="${asset.name}">画像を拡大</button>`}
         </div>
       </article>
     `;
+  }
+
+  function closeArchiveViewer() {
+    archiveViewer?.remove();
+    archiveViewer = null;
+  }
+
+  function openArchiveViewer(src, name) {
+    closeArchiveViewer();
+    archiveViewer = document.createElement("div");
+    archiveViewer.className = "archive-viewer";
+    archiveViewer.innerHTML = `
+      <button class="archive-viewer-back primary-button" type="button">戻る</button>
+      <img src="${src}" alt="${name || "資料画像"}">
+    `;
+    archiveViewer.querySelector("button")?.addEventListener("click", closeArchiveViewer);
+    archiveViewer.addEventListener("click", event => {
+      if (event.target === archiveViewer) closeArchiveViewer();
+    });
+    document.body.appendChild(archiveViewer);
   }
 
   function stopArchiveAudio() {
@@ -2140,6 +2161,7 @@
       track.pause();
       track.currentTime = 0;
     });
+    closeArchiveViewer();
   }
 
   function renderEncyclopedia(tab = "items") {
@@ -4323,8 +4345,8 @@
         x,
         y,
         r: puddleRadius,
-        life: 3.2 + player.sake * 0.22,
-        max: 3.2 + player.sake * 0.22,
+        life: 2.65 + player.sake * 0.16,
+        max: 2.65 + player.sake * 0.16,
         tick: 0,
         damage: puddleDamage,
         color: evolved ? "#7ff7ff" : "#6fc8ff",
@@ -5017,7 +5039,8 @@
       puddle.tick = 0.24;
       for (const enemy of enemies) {
         if (isEnemyInPuddle(enemy, puddle)) {
-          enemy.slow = Math.max(enemy.slow, puddle.kind === "pureFlood" ? 0.3 : 0.22);
+          enemy.slow = Math.max(enemy.slow, puddle.kind === "pureFlood" ? 0.36 : 0.28);
+          enemy.sakeSlow = Math.max(enemy.sakeSlow || 0, puddle.kind === "pureFlood" ? 0.36 : 0.28);
           damageEnemy(enemy, puddle.damage, 0, { noKnockback: true, noFlinch: true });
         }
       }
@@ -5102,6 +5125,7 @@
       enemy.dashCd -= dt;
       enemy.shootCd = Math.max(0, (enemy.shootCd || 0) - dt);
       enemy.slow = Math.max(0, enemy.slow - dt);
+      enemy.sakeSlow = Math.max(0, (enemy.sakeSlow || 0) - dt);
       if (enemy.type === "senryoThief") {
         updateSenryoThief(enemy, dt, angle, distanceToPlayer);
         continue;
@@ -5114,7 +5138,9 @@
       } else {
         const weave = Math.sin(elapsed * 2.9 + enemy.phase) * (enemy.type === "tengu" ? 1.35 : enemy.type === "shinobi" ? 0.15 : 0.42);
         const closeBoost = distanceToPlayer < 280 ? 1.18 + clamp(elapsed / 360, 0, 1) * 0.75 : 1;
-        const slowMul = enemy.slow > 0 ? enemy.type === "overlord" ? 0.82 : 0.54 : 1;
+        const baseSlowMul = enemy.slow > 0 ? enemy.type === "overlord" ? 0.82 : 0.54 : 1;
+        const sakeSlowMul = enemy.sakeSlow > 0 ? enemy.type === "overlord" ? 0.72 : 0.38 : 1;
+        const slowMul = Math.min(baseSlowMul, sakeSlowMul);
         const traitMul = enemy.type === "overlord" ? 1.04 : enemy.type === "armored" ? 0.82 : enemy.type === "oniElite" ? 0.92 : 1;
         enemy.vx += Math.cos(angle + weave) * enemy.speed * closeBoost * slowMul * traitMul * dt * 4.8;
         enemy.vy += Math.sin(angle + weave) * enemy.speed * closeBoost * slowMul * traitMul * dt * 4.8;
@@ -6982,6 +7008,11 @@
     if (!button) return;
     gamepadChoiceIndex = 0;
     renderEncyclopedia(button.dataset.encyclopediaTab);
+  });
+  encyclopediaList?.addEventListener("click", event => {
+    const button = event.target.closest("[data-archive-image]");
+    if (!button) return;
+    openArchiveViewer(button.dataset.archiveImage, button.dataset.archiveName);
   });
   saveResetButton.addEventListener("click", resetSaveData);
   saveSlots.addEventListener("click", event => {
