@@ -879,15 +879,26 @@ h2 {
 
 .records-panel {
   width: min(920px, calc(100vw - 32px));
+  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
   display: flex;
   flex-direction: column;
   align-items: center;
+  overflow: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 22px;
   border: 1px solid rgba(255, 232, 164, 0.38);
   border-radius: 8px;
   background: rgba(9, 5, 5, 0.82);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.58);
   text-align: center;
+  touch-action: pan-y;
+}
+
+.records-screen,
+.records-card {
+  touch-action: pan-y;
 }
 
 #recordsCloseButton {
@@ -2796,6 +2807,7 @@ h2 {
 
   .records-panel {
     width: calc(100vw - 24px);
+    max-height: calc(100vh - 24px);
     max-height: calc(100dvh - 24px);
     overflow: auto;
     padding: 14px;
@@ -3171,6 +3183,7 @@ h2 {
   .records-panel,
   .encyclopedia-panel {
     width: min(760px, calc(100vw - 28px));
+    max-height: calc(100vh - 22px);
     max-height: calc(100dvh - 22px);
     overflow: auto;
     padding: 14px;
