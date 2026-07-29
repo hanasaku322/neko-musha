@@ -336,6 +336,7 @@
     shotTimer: 0,
     shotBurstCount: 0,
     shotBurstTimer: 0,
+    shotBurstInterval: 0,
     shotBurstDir: 0,
     shotBurstDenkichi: false,
     slashTimer: 0.8,
@@ -1386,6 +1387,7 @@
       beamPoseDir: 0,
       shotBurstCount: 0,
       shotBurstTimer: 0,
+      shotBurstInterval: 0,
       shotBurstDir: 0,
       shotBurstDenkichi: false
     });
@@ -2214,6 +2216,110 @@
       if (event.target === archiveViewer) closeArchiveViewer();
     });
     document.body.appendChild(archiveViewer);
+    archiveViewer.querySelector(".archive-viewer-back")?.remove();
+    const bottomButton = archiveViewer.querySelector(".archive-viewer-bottom");
+    if (bottomButton) bottomButton.textContent = "戻る";
+    const image = archiveViewer.querySelector("img");
+    if (image) {
+      const stage = document.createElement("div");
+      stage.className = "archive-viewer-stage";
+      image.before(stage);
+      stage.appendChild(image);
+      setupArchiveViewerZoom(stage, image);
+    }
+  }
+
+  function setupArchiveViewerZoom(stage, image) {
+    const zoom = {
+      scale: 1,
+      x: 0,
+      y: 0,
+      pointers: new Map(),
+      startScale: 1,
+      startX: 0,
+      startY: 0,
+      startMidX: 0,
+      startMidY: 0,
+      startDistance: 1
+    };
+    const pairDistance = pair => Math.hypot(pair[0].x - pair[1].x, pair[0].y - pair[1].y) || 1;
+    const pairMid = pair => ({ x: (pair[0].x + pair[1].x) / 2, y: (pair[0].y + pair[1].y) / 2 });
+    const applyArchiveZoom = () => {
+      zoom.scale = clamp(zoom.scale, 1, 4.5);
+      if (zoom.scale <= 1.01) {
+        zoom.x = 0;
+        zoom.y = 0;
+      } else {
+        const rect = stage.getBoundingClientRect();
+        const maxX = rect.width * (zoom.scale - 1) * 0.5;
+        const maxY = rect.height * (zoom.scale - 1) * 0.5;
+        zoom.x = clamp(zoom.x, -maxX, maxX);
+        zoom.y = clamp(zoom.y, -maxY, maxY);
+      }
+      image.style.setProperty("--archive-zoom", zoom.scale.toFixed(3));
+      image.style.setProperty("--archive-pan-x", `${zoom.x.toFixed(1)}px`);
+      image.style.setProperty("--archive-pan-y", `${zoom.y.toFixed(1)}px`);
+      archiveViewer?.classList.toggle("archive-zoomed", zoom.scale > 1.01);
+    };
+    const rememberGestureStart = () => {
+      const pointers = [...zoom.pointers.values()];
+      if (pointers.length >= 2) {
+        const pair = pointers.slice(0, 2);
+        const mid = pairMid(pair);
+        zoom.startDistance = pairDistance(pair);
+        zoom.startScale = zoom.scale;
+        zoom.startX = zoom.x;
+        zoom.startY = zoom.y;
+        zoom.startMidX = mid.x;
+        zoom.startMidY = mid.y;
+        return;
+      }
+      if (pointers.length === 1) {
+        zoom.startScale = zoom.scale;
+        zoom.startX = zoom.x;
+        zoom.startY = zoom.y;
+        zoom.startMidX = pointers[0].x;
+        zoom.startMidY = pointers[0].y;
+      }
+    };
+    stage.addEventListener("pointerdown", event => {
+      event.preventDefault();
+      stage.setPointerCapture?.(event.pointerId);
+      zoom.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      rememberGestureStart();
+    });
+    stage.addEventListener("pointermove", event => {
+      if (!zoom.pointers.has(event.pointerId)) return;
+      event.preventDefault();
+      zoom.pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+      const pointers = [...zoom.pointers.values()];
+      if (pointers.length >= 2) {
+        const pair = pointers.slice(0, 2);
+        const mid = pairMid(pair);
+        zoom.scale = zoom.startScale * (pairDistance(pair) / zoom.startDistance);
+        zoom.x = zoom.startX + mid.x - zoom.startMidX;
+        zoom.y = zoom.startY + mid.y - zoom.startMidY;
+        applyArchiveZoom();
+        return;
+      }
+      if (zoom.scale <= 1.01) return;
+      zoom.x = zoom.startX + event.clientX - zoom.startMidX;
+      zoom.y = zoom.startY + event.clientY - zoom.startMidY;
+      applyArchiveZoom();
+    });
+    const releaseArchivePointer = event => {
+      if (!zoom.pointers.has(event.pointerId)) return;
+      zoom.pointers.delete(event.pointerId);
+      rememberGestureStart();
+    };
+    stage.addEventListener("pointerup", releaseArchivePointer);
+    stage.addEventListener("pointercancel", releaseArchivePointer);
+    stage.addEventListener("wheel", event => {
+      if (!event.ctrlKey) return;
+      event.preventDefault();
+      zoom.scale *= event.deltaY < 0 ? 1.12 : 0.9;
+      applyArchiveZoom();
+    }, { passive: false });
   }
 
   function arrangeMenuCloseButtons() {
@@ -4048,8 +4154,10 @@
     return clamp(Math.round(player.rapidShots || 1), 1, 5);
   }
 
-  function basicRapidShotInterval() {
-    return player.character === "denkichi" ? 0.078 : 0.064;
+  function basicRapidShotInterval(cycleDuration = cooldownTime(player.fireRate, 0.36)) {
+    const count = basicRapidShotCount();
+    if (count <= 1) return 0;
+    return Math.max(0.055, cycleDuration / count);
   }
 
   function fireDenkichiLaser(angle) {
@@ -4102,10 +4210,11 @@
     }
   }
 
-  function queueBasicShotBurst(baseDir, denkichi = player.character === "denkichi") {
+  function queueBasicShotBurst(baseDir, denkichi = player.character === "denkichi", cycleDuration = cooldownTime(player.fireRate, 0.36)) {
     const burstCount = basicRapidShotCount() - 1;
     player.shotBurstCount = burstCount;
-    player.shotBurstTimer = basicRapidShotInterval();
+    player.shotBurstInterval = basicRapidShotInterval(cycleDuration);
+    player.shotBurstTimer = player.shotBurstInterval;
     player.shotBurstDir = baseDir;
     player.shotBurstDenkichi = denkichi;
   }
@@ -4116,25 +4225,25 @@
     while (player.shotBurstCount > 0 && player.shotBurstTimer <= 0) {
       fireBasicShotVolley(player.shotBurstDir, player.shotBurstDenkichi);
       player.shotBurstCount -= 1;
-      player.shotBurstTimer += basicRapidShotInterval();
+      player.shotBurstTimer += player.shotBurstInterval || basicRapidShotInterval();
     }
   }
 
-  function shootDenkichiLaser() {
+  function shootDenkichiLaser(cycleDuration) {
     const baseDir = player.dir;
     fireBasicShotVolley(baseDir, true);
-    queueBasicShotBurst(baseDir, true);
+    queueBasicShotBurst(baseDir, true, cycleDuration);
     if (audio) audio.sfx("slash");
   }
 
-  function shoot() {
+  function shoot(cycleDuration) {
     if (player.character === "denkichi") {
-      shootDenkichiLaser();
+      shootDenkichiLaser(cycleDuration);
       return;
     }
     const baseDir = player.dir;
     fireBasicShotVolley(baseDir, false);
-    queueBasicShotBurst(baseDir, false);
+    queueBasicShotBurst(baseDir, false, cycleDuration);
     if (chance(0.3) && audio) audio.sfx("slash");
   }
 
@@ -5096,8 +5205,9 @@
     }
     updateBasicShotBurst(dt);
     if (player.shotTimer <= 0) {
-      shoot();
-      player.shotTimer = cooldownTime(player.fireRate, 0.36);
+      const shotCooldown = cooldownTime(player.fireRate, 0.36);
+      shoot(shotCooldown);
+      player.shotTimer = shotCooldown;
     }
     if (player.slashTimer <= 0) {
       doSlash();
@@ -7040,6 +7150,12 @@
     lastTouchEndAt = now;
   }
 
+  function preventFieldDoubleTapZoom(event) {
+    if (state !== "playing") return;
+    const now = performance.now();
+    if (now - lastTouchEndAt < 340) event.preventDefault();
+  }
+
   function axisWithDeadzone(value, deadzone = 0.18) {
     const abs = Math.abs(value || 0);
     if (abs < deadzone) return 0;
@@ -7151,6 +7267,8 @@
     if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Space"].includes(event.code)) event.preventDefault();
   });
   window.addEventListener("keyup", event => keys.delete(event.code));
+  canvas.addEventListener("touchstart", preventFieldDoubleTapZoom, { passive: false });
+  canvas.addEventListener("dblclick", event => event.preventDefault());
   canvas.addEventListener("pointerdown", event => {
     if (state !== "playing") return;
     if (event.pointerType === "touch") {
