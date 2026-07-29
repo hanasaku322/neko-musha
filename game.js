@@ -5090,7 +5090,7 @@
     }
 
     if (thiefTimer <= 0) {
-      if (elapsed > 24 && chance(0.38)) spawnSenryoThief();
+      if (elapsed > 24 && chance(0.26)) spawnSenryoThief();
       thiefTimer = rand(105, 180);
     }
 
