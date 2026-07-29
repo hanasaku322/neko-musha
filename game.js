@@ -1384,7 +1384,7 @@
     spawnTimer = 0;
     bossTimer = 62;
     fieldPickupTimer = 18;
-    thiefTimer = rand(42, 86);
+    thiefTimer = rand(70, 124);
     nextSupplyDropAt = ENDGAME_TIME;
     supplyDropIndex = 0;
     openedChestCount = 0;
@@ -4007,11 +4007,12 @@
   function shootDenkichiLaser() {
     const count = Math.max(1, player.projectileCount);
     const baseDir = player.dir;
+    const spreadStep = count > 1 ? Math.min(0.05, 0.28 / Math.max(1, count - 1)) : 0;
     player.poseTimer = 0.22;
     player.beamPoseTimer = 0.24;
     player.beamPoseDir = baseDir;
     for (let i = 0; i < count; i++) {
-      const spread = (i - (count - 1) / 2) * 0.08;
+      const spread = (i - (count - 1) / 2) * spreadStep;
       const angle = baseDir + spread;
       const speed = 1080 * player.projectileSpeed;
       const crit = chance(player.crit);
@@ -4039,9 +4040,10 @@
     }
     const eclipse = evolvedItems.has("eclipseFang");
     const count = Math.max(1, player.projectileCount);
+    const spreadStep = count > 1 ? Math.min(0.07, 0.38 / Math.max(1, count - 1)) : 0;
     for (let i = 0; i < count; i++) {
       const base = player.dir;
-      const spread = (i - (count - 1) / 2) * 0.11;
+      const spread = (i - (count - 1) / 2) * spreadStep;
       const angle = base + spread;
       const speed = 760 * player.projectileSpeed;
       const crit = chance(player.crit);
@@ -4406,14 +4408,14 @@
     const ring = (evolved ? 142 + sakeLevel * 20 : 82 + sakeLevel * 18) * areaMul;
     const puddleRadius = (evolved ? 42 + sakeLevel * 5 : 27 + sakeLevel * 4.4) * areaMul;
     const puddleDamage = scaledDamage(player.damage * (evolved ? 0.065 + powerLevel * 0.01 : 0.045 + powerLevel * 0.008));
-    const sequenceInterval = evolved ? Math.max(0.05, 0.12 - sakeLevel * 0.007) : Math.max(0.055, 0.24 - sakeLevel * 0.02);
+    const sequenceInterval = evolved ? Math.max(0.075, 0.17 - sakeLevel * 0.008) : Math.max(0.055, 0.24 - sakeLevel * 0.02);
     const durationMul = Math.min(player.duration, evolved ? 1.12 : 1.08);
     const puddleLife = (evolved ? 1.82 + sakeLevel * 0.06 : 1.42 + sakeLevel * 0.075) * durationMul;
     for (let i = 0; i < count; i++) {
       const angle = i * TAU / Math.max(1, count) + elapsed * 0.18;
       const x = player.x + Math.cos(angle) * ring;
       const y = player.y + Math.sin(angle) * ring;
-      const delay = i * sequenceInterval;
+      const delay = (evolved ? Math.floor(i / 2) : i) * sequenceInterval;
       puddles.push({
         x,
         y,
@@ -4893,8 +4895,8 @@
     }
 
     if (thiefTimer <= 0) {
-      if (elapsed > 24 && chance(0.72)) spawnSenryoThief();
-      thiefTimer = rand(72, 132);
+      if (elapsed > 24 && chance(0.38)) spawnSenryoThief();
+      thiefTimer = rand(105, 180);
     }
 
     movePlayer(dt);
