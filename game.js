@@ -332,6 +332,10 @@
     beamPoseTimer: 0,
     beamPoseDir: 0,
     shotTimer: 0,
+    shotBurstCount: 0,
+    shotBurstTimer: 0,
+    shotBurstDir: 0,
+    shotBurstDenkichi: false,
     slashTimer: 0.8,
     drumTimer: 3.2,
     shurikenTimer: 2.3,
@@ -339,6 +343,8 @@
     damage: 18,
     fireRate: 1.05,
     projectileCount: 1,
+    shotLanes: 1,
+    rapidShots: 1,
     magnet: 150,
     aura: 0,
     auraOrbs: [],
@@ -547,7 +553,7 @@
       sprite: 0,
       max: 5,
       apply(level) {
-        if (isCountLevel(level)) player.projectileCount += 1;
+        if (isCountLevel(level)) player.rapidShots += 1;
         if (isPowerLevel(level)) {
           player.damage += 3.2 + level * 0.8;
           player.crit += 0.014 + level * 0.004;
@@ -659,7 +665,7 @@
       sprite: 9,
       max: 5,
       apply(level) {
-        if (level === 1 || level === 3) player.projectileCount += 1;
+        if (level === 1 || level === 3) player.shotLanes = Math.min(3, player.shotLanes + 1);
         player.damage += 1;
       }
     },
@@ -901,7 +907,7 @@
       sprite: 28,
       max: 3,
       apply(level) {
-        if (level === 1 || level === 3) player.projectileCount += 1;
+        if (level === 1 || level === 3) player.rapidShots += 1;
         if (level === 2) player.extraPierce += 1;
       }
     },
@@ -975,7 +981,7 @@
       desc: "手裏剣の数と貫通が増え、全方位制圧力が跳ね上がる。",
       apply() {
         player.shuriken += 2;
-        player.projectileCount += 1;
+        player.rapidShots += 1;
         player.extraPierce += 1;
       }
     },
@@ -1336,6 +1342,8 @@
       damage: 18,
       fireRate: 1.05,
       projectileCount: 1,
+      shotLanes: 1,
+      rapidShots: 1,
       magnet: 150,
       aura: 0,
       auraOrbs: [],
@@ -1373,7 +1381,11 @@
       sickleTimer: 2.1,
       poseTimer: 0,
       beamPoseTimer: 0,
-      beamPoseDir: 0
+      beamPoseDir: 0,
+      shotBurstCount: 0,
+      shotBurstTimer: 0,
+      shotBurstDir: 0,
+      shotBurstDenkichi: false
     });
     applyCharacterProfile();
     applyShopUpgrades();
@@ -3852,7 +3864,8 @@
     player.damage = Math.max(player.damage, 72);
     player.fireRate = Math.max(0.42, player.fireRate);
     player.slashPower = Math.max(player.slashPower, 2.2);
-    player.projectileCount = Math.max(player.projectileCount, 3);
+    player.shotLanes = Math.max(player.shotLanes, 3);
+    player.rapidShots = Math.max(player.rapidShots, 3);
     player.might = Math.max(player.might, 1.8);
     player.projectileSpeed = Math.max(player.projectileSpeed, 1.25);
     player.fury = 0;
@@ -4004,32 +4017,93 @@
     });
   }
 
-  function shootDenkichiLaser() {
-    const count = Math.max(1, player.projectileCount);
-    const baseDir = player.dir;
-    const spreadStep = count > 1 ? Math.min(0.05, 0.28 / Math.max(1, count - 1)) : 0;
-    player.poseTimer = 0.22;
-    player.beamPoseTimer = 0.24;
-    player.beamPoseDir = baseDir;
-    for (let i = 0; i < count; i++) {
-      const spread = (i - (count - 1) / 2) * spreadStep;
-      const angle = baseDir + spread;
-      const speed = 1080 * player.projectileSpeed;
-      const crit = chance(player.crit);
-      if (projectiles.length >= MAX_PROJECTILES) projectiles.shift();
-      projectiles.push({
-        x: player.x + Math.cos(angle) * player.r * 1.18,
-        y: player.y + Math.sin(angle) * player.r * 1.18,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        r: (crit ? 18 : 15) * Math.min(player.area, 1.42),
-        life: 0.74 * player.duration,
-        damage: scaledDamage(player.damage * (crit ? 2.05 : 1.48)),
-        color: crit ? "#fff1a8" : "#9be8ff",
-        pierce: 3 + player.extraPierce + (crit ? 1 : 0),
-        kind: "laser"
-      });
+  function basicShotLaneOffsets() {
+    const lanes = clamp(Math.round(player.shotLanes || 1), 1, 3);
+    if (lanes === 1) return [0];
+    if (lanes === 2) return [-0.055, 0.055];
+    return [-0.078, 0, 0.078];
+  }
+
+  function basicRapidShotCount() {
+    return clamp(Math.round(player.rapidShots || 1), 1, 5);
+  }
+
+  function basicRapidShotInterval() {
+    return player.character === "denkichi" ? 0.078 : 0.064;
+  }
+
+  function fireDenkichiLaser(angle) {
+    const speed = 1080 * player.projectileSpeed;
+    const crit = chance(player.crit);
+    if (projectiles.length >= MAX_PROJECTILES) projectiles.shift();
+    projectiles.push({
+      x: player.x + Math.cos(angle) * player.r * 1.18,
+      y: player.y + Math.sin(angle) * player.r * 1.18,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      r: (crit ? 18 : 15) * Math.min(player.area, 1.42),
+      life: 0.74 * player.duration,
+      damage: scaledDamage(player.damage * (crit ? 2.05 : 1.48)),
+      color: crit ? "#fff1a8" : "#9be8ff",
+      pierce: 3 + player.extraPierce + (crit ? 1 : 0),
+      kind: "laser"
+    });
+  }
+
+  function fireBasicBullet(angle) {
+    const eclipse = evolvedItems.has("eclipseFang");
+    const speed = 760 * player.projectileSpeed;
+    const crit = chance(player.crit);
+    if (projectiles.length >= MAX_PROJECTILES) projectiles.shift();
+    projectiles.push({
+      x: player.x + Math.cos(angle) * player.r * 1.12,
+      y: player.y + Math.sin(angle) * player.r * 1.12,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      r: (crit ? 13 : 11) * Math.min(player.area, 1.55),
+      life: 0.92 * player.duration,
+      damage: scaledDamage(player.damage * (crit ? 1.8 : 1)),
+      color: eclipse ? (crit ? "#fff0a3" : "#ff4058") : (crit ? "#ffdf5a" : "#5fe8e2"),
+      pierce: (crit ? 1 : 0) + player.extraPierce,
+      kind: eclipse ? "eclipseBullet" : "bullet"
+    });
+  }
+
+  function fireBasicShotVolley(baseDir, denkichi = player.character === "denkichi") {
+    if (denkichi) {
+      player.poseTimer = 0.22;
+      player.beamPoseTimer = 0.24;
+      player.beamPoseDir = baseDir;
     }
+    for (const spread of basicShotLaneOffsets()) {
+      const angle = baseDir + spread;
+      if (denkichi) fireDenkichiLaser(angle);
+      else fireBasicBullet(angle);
+    }
+  }
+
+  function queueBasicShotBurst(baseDir, denkichi = player.character === "denkichi") {
+    const burstCount = basicRapidShotCount() - 1;
+    player.shotBurstCount = burstCount;
+    player.shotBurstTimer = basicRapidShotInterval();
+    player.shotBurstDir = baseDir;
+    player.shotBurstDenkichi = denkichi;
+  }
+
+  function updateBasicShotBurst(dt) {
+    if (player.shotBurstCount <= 0) return;
+    player.shotBurstTimer -= dt;
+    while (player.shotBurstCount > 0 && player.shotBurstTimer <= 0) {
+      fireBasicShotVolley(player.shotBurstDir, player.shotBurstDenkichi);
+      player.shotBurstCount -= 1;
+      player.shotBurstTimer += basicRapidShotInterval();
+    }
+  }
+
+  function shootDenkichiLaser() {
+    const baseDir = player.dir;
+    fireBasicShotVolley(baseDir, true);
+    queueBasicShotBurst(baseDir, true);
     if (audio) audio.sfx("slash");
   }
 
@@ -4038,29 +4112,9 @@
       shootDenkichiLaser();
       return;
     }
-    const eclipse = evolvedItems.has("eclipseFang");
-    const count = Math.max(1, player.projectileCount);
-    const spreadStep = count > 1 ? Math.min(0.07, 0.38 / Math.max(1, count - 1)) : 0;
-    for (let i = 0; i < count; i++) {
-      const base = player.dir;
-      const spread = (i - (count - 1) / 2) * spreadStep;
-      const angle = base + spread;
-      const speed = 760 * player.projectileSpeed;
-      const crit = chance(player.crit);
-      if (projectiles.length >= MAX_PROJECTILES) projectiles.shift();
-      projectiles.push({
-        x: player.x + Math.cos(angle) * player.r * 1.12,
-        y: player.y + Math.sin(angle) * player.r * 1.12,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
-        r: (crit ? 13 : 11) * Math.min(player.area, 1.55),
-        life: 0.92 * player.duration,
-        damage: scaledDamage(player.damage * (crit ? 1.8 : 1)),
-        color: eclipse ? (crit ? "#fff0a3" : "#ff4058") : (crit ? "#ffdf5a" : "#5fe8e2"),
-        pierce: (crit ? 1 : 0) + player.extraPierce,
-        kind: eclipse ? "eclipseBullet" : "bullet"
-      });
-    }
+    const baseDir = player.dir;
+    fireBasicShotVolley(baseDir, false);
+    queueBasicShotBurst(baseDir, false);
     if (chance(0.3) && audio) audio.sfx("slash");
   }
 
@@ -5008,6 +5062,7 @@
       player.fury = Math.max(0, player.fury - dt);
       doFuryStorm(dt);
     }
+    updateBasicShotBurst(dt);
     if (player.shotTimer <= 0) {
       shoot();
       player.shotTimer = cooldownTime(player.fireRate, 0.36);
