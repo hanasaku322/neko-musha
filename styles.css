@@ -869,22 +869,26 @@ h2 {
 }
 
 .records-screen {
-  place-items: center;
+  place-items: start center;
+  align-content: start;
+  overflow-y: scroll;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   padding: 18px;
   background:
     radial-gradient(circle at 50% 34%, rgba(255, 211, 94, 0.18), transparent 34%),
     linear-gradient(90deg, rgba(5, 3, 3, 0.88), rgba(5, 3, 3, 0.34) 48%, rgba(5, 3, 3, 0.18)),
     url("assets/records-neko-musha.png") center / cover no-repeat;
+  touch-action: pan-y;
 }
 
 .records-panel {
   width: min(920px, calc(100vw - 32px));
-  max-height: calc(100vh - 36px);
-  max-height: calc(100dvh - 36px);
   display: flex;
+  flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
-  overflow: auto;
+  overflow: visible;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 22px;
@@ -896,7 +900,6 @@ h2 {
   touch-action: pan-y;
 }
 
-.records-screen,
 .records-card {
   touch-action: pan-y;
 }
@@ -3586,6 +3589,11 @@ h2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
+}
+
+.records-screen .records-panel {
+  max-height: none;
+  overflow: visible;
 }
 
 @media (max-height: 560px) and (min-width: 721px), (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 900px) {
