@@ -879,7 +879,7 @@ h2 {
 .records-screen {
   place-items: start center;
   align-content: start;
-  overflow-y: scroll;
+  overflow: hidden;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 18px;
@@ -892,11 +892,13 @@ h2 {
 
 .records-panel {
   width: min(920px, calc(100vw - 32px));
+  max-height: calc(100vh - 36px);
+  max-height: calc(100dvh - 36px);
   display: flex;
   flex: 0 0 auto;
   flex-direction: column;
   align-items: center;
-  overflow: visible;
+  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 22px;
@@ -3687,11 +3689,6 @@ h2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
   }
-}
-
-.records-screen .records-panel {
-  max-height: none;
-  overflow: visible;
 }
 
 @media (max-height: 560px) and (min-width: 721px), (hover: none) and (pointer: coarse) and (orientation: landscape) and (min-width: 900px) {
