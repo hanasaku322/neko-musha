@@ -1301,6 +1301,18 @@ h2 {
   height: 32px;
 }
 
+.archive-track-title {
+  width: fit-content;
+  margin: 0 0 8px;
+  padding: 4px 8px;
+  border: 1px solid rgba(88, 243, 228, 0.28);
+  border-radius: 7px;
+  background: rgba(88, 243, 228, 0.1);
+  color: #dffcff;
+  font-size: 13px;
+  font-weight: 900;
+}
+
 .archive-link {
   width: fit-content;
   padding: 5px 8px;
