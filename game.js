@@ -11,6 +11,7 @@
   const titleStory = titleScreen?.querySelector(".title-story");
   const levelScreen = document.getElementById("levelScreen");
   const gameOverScreen = document.getElementById("gameOverScreen");
+  const bossDefeatCutinScreen = document.getElementById("bossDefeatCutinScreen");
   const endingScreen = document.getElementById("endingScreen");
   const endingImageViewport = document.getElementById("endingImageViewport");
   const endingImage = document.getElementById("endingImage");
@@ -65,6 +66,7 @@
   const ENDGAME_TIME = 600;
   const ENDING_TIME = 900;
   const CLEAR_TRANSITION_TIME = 2.8;
+  const BOSS_DEFEAT_CUTIN_TIME = 3.9;
   const OVERLORD_START_TIME = 600;
   const TARGET_FPS = 30;
   const FIELD_CAMERA_ZOOM = 1.06;
@@ -200,6 +202,7 @@
   let catVoiceTimer = 0;
   let clearDelay = 0;
   let clearMaxDelay = CLEAR_TRANSITION_TIME;
+  let bossDefeatCutinDelay = 0;
   let clearReason = "survive";
   let lastResult = null;
   let levelChoiceReadyAt = 0;
@@ -1409,6 +1412,7 @@
     overlordSpawned = false;
     clearDelay = 0;
     clearMaxDelay = CLEAR_TRANSITION_TIME;
+    bossDefeatCutinDelay = 0;
     clearReason = "survive";
     lastResult = null;
     projectiles = [];
@@ -1851,12 +1855,29 @@
     }
   }
 
+  function hideBossDefeatCutin() {
+    bossDefeatCutinDelay = 0;
+    bossDefeatCutinScreen?.classList.add("hidden");
+    bossDefeatCutinScreen?.classList.remove("active", "leaving");
+  }
+
+  function showEndingScreenElement(fade = false) {
+    if (!endingScreen) return;
+    endingScreen.classList.remove("ending-fade-in");
+    endingScreen.classList.remove("hidden");
+    if (fade) {
+      void endingScreen.offsetWidth;
+      endingScreen.classList.add("ending-fade-in");
+    }
+  }
+
   function startGame(options = {}) {
     testMode = !!options.test;
     clearEndingFallbackTimer();
     stopEndingBgm();
     titleScreen.classList.add("hidden");
     gameOverScreen.classList.add("hidden");
+    hideBossDefeatCutin();
     endingScreen.classList.add("hidden");
     shopScreen.classList.add("hidden");
     recordsScreen.classList.add("hidden");
@@ -3774,7 +3795,8 @@
     recordsScreen?.classList.add("hidden");
     encyclopediaScreen?.classList.add("hidden");
     resetEndingZoom();
-    endingScreen?.classList.remove("hidden");
+    hideBossDefeatCutin();
+    showEndingScreenElement(false);
     try {
       if (audio) audio.stop();
     } catch (error) {
@@ -3783,7 +3805,7 @@
     playEndingBgm();
   }
 
-  function showEndingForClear(reason = "survive") {
+  function showEndingForClear(reason = "survive", options = {}) {
     clearEndingFallbackTimer();
     state = "ending";
     if (reason === "survive") elapsed = Math.max(elapsed, ENDING_TIME);
@@ -3804,7 +3826,8 @@
     if (upgradeChoices) upgradeChoices.innerHTML = "";
     if (pauseButton) pauseButton.textContent = "ステータス";
     resetEndingZoom();
-    endingScreen?.classList.remove("hidden");
+    hideBossDefeatCutin();
+    showEndingScreenElement(!!options.fade);
     try {
       updateHud();
     } catch (error) {
@@ -3816,6 +3839,33 @@
       audio = null;
     }
     playEndingBgm();
+  }
+
+  function showBossDefeatCutin(reason = "boss") {
+    state = "endingCutin";
+    clearReason = reason;
+    bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_TIME;
+    endingScreen?.classList.add("hidden");
+    endingScreen?.classList.remove("ending-fade-in");
+    pauseScreen?.classList.add("hidden");
+    levelScreen?.classList.add("hidden");
+    gameOverScreen?.classList.add("hidden");
+    titleScreen?.classList.add("hidden");
+    shopScreen?.classList.add("hidden");
+    recordsScreen?.classList.add("hidden");
+    encyclopediaScreen?.classList.add("hidden");
+    try {
+      if (audio) audio.stop();
+    } catch (error) {
+      audio = null;
+    }
+    if (!bossDefeatCutinScreen) {
+      showEndingForClear(reason, { fade: true });
+      return;
+    }
+    bossDefeatCutinScreen.classList.remove("hidden", "active", "leaving");
+    void bossDefeatCutinScreen.offsetWidth;
+    bossDefeatCutinScreen.classList.add("active");
   }
 
   function purgeEnemiesForEnding() {
@@ -3840,14 +3890,16 @@
     clearDelay = clearMaxDelay;
     purgeEnemiesForEnding();
     clearEndingFallbackTimer();
+    const fallbackDelay = clearMaxDelay + (reason === "boss" ? BOSS_DEFEAT_CUTIN_TIME + 1.2 : 0.55);
     clearFallbackTimer = setTimeout(() => {
-      if (state !== "clearing") return;
+      if (state !== "clearing" && state !== "endingCutin") return;
       try {
-        showEndingForClear(clearReason);
-      } catch (error) {
         forceEndingScreen(clearReason);
+      } catch (error) {
+        state = "ending";
+        endingScreen?.classList.remove("hidden");
       }
-    }, (clearMaxDelay + 0.55) * 1000);
+    }, fallbackDelay * 1000);
     try {
       showToast({ sprite: 0 }, reason === "boss" ? "終焉の黒角王を討ち取った！" : "夜明けが訪れた！");
     } catch (error) {
@@ -4966,7 +5018,8 @@
       updateList(shockwaves, dt);
       if (clearDelay <= 0) {
         try {
-          showEndingForClear(clearReason);
+          if (clearReason === "boss") showBossDefeatCutin(clearReason);
+          else showEndingForClear(clearReason);
         } catch (error) {
           state = "ending";
           pauseScreen?.classList.add("hidden");
@@ -4976,7 +5029,20 @@
           shopScreen?.classList.add("hidden");
           recordsScreen?.classList.add("hidden");
           encyclopediaScreen?.classList.add("hidden");
-          endingScreen?.classList.remove("hidden");
+          hideBossDefeatCutin();
+          showEndingScreenElement(false);
+        }
+      }
+      return;
+    }
+    if (state === "endingCutin") {
+      bossDefeatCutinDelay -= dt;
+      if (bossDefeatCutinDelay <= 0) {
+        bossDefeatCutinScreen?.classList.add("leaving");
+        try {
+          showEndingForClear(clearReason, { fade: true });
+        } catch (error) {
+          forceEndingScreen(clearReason);
         }
       }
       return;
@@ -7014,6 +7080,7 @@
       console.error("game loop recovered", error);
       frameCarry = 0;
       if (state === "clearing") forceEndingScreen(clearReason);
+      else if (state === "endingCutin") forceEndingScreen(clearReason);
       else if (state === "ending") endingScreen?.classList.remove("hidden");
     } finally {
       requestAnimationFrame(loop);
