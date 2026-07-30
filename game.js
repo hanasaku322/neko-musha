@@ -7237,6 +7237,7 @@
     const target = event.target;
     if (archiveViewer && target?.closest?.(".archive-viewer-stage")) return true;
     if (state === "ending" && target?.closest?.(".ending-image-viewport")) return true;
+    if (state === "records" && target?.closest?.(".records-screen")) return true;
     if (target?.closest?.(".records-panel, .encyclopedia-panel, .shop-panel, .pause-panel, .level-panel, .result-panel")) return true;
     return false;
   }

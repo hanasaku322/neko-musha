@@ -974,7 +974,8 @@ h2 {
 .records-screen {
   place-items: start center;
   align-content: start;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   overscroll-behavior: contain;
   -webkit-overflow-scrolling: touch;
   padding: 18px;
@@ -1003,6 +1004,11 @@ h2 {
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.58);
   text-align: center;
   touch-action: pan-y;
+}
+
+.records-screen .records-panel {
+  max-height: none;
+  overflow: visible;
 }
 
 .records-card {
