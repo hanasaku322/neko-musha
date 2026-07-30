@@ -12,6 +12,7 @@
   const levelScreen = document.getElementById("levelScreen");
   const gameOverScreen = document.getElementById("gameOverScreen");
   const bossDefeatCutinScreen = document.getElementById("bossDefeatCutinScreen");
+  const bossUndefeatedCutinScreen = document.getElementById("bossUndefeatedCutinScreen");
   const endingScreen = document.getElementById("endingScreen");
   const endingImageViewport = document.getElementById("endingImageViewport");
   const endingImage = document.getElementById("endingImage");
@@ -1857,8 +1858,10 @@
 
   function hideBossDefeatCutin() {
     bossDefeatCutinDelay = 0;
-    bossDefeatCutinScreen?.classList.add("hidden");
-    bossDefeatCutinScreen?.classList.remove("active", "leaving");
+    for (const screen of [bossDefeatCutinScreen, bossUndefeatedCutinScreen]) {
+      screen?.classList.add("hidden");
+      screen?.classList.remove("active", "leaving");
+    }
   }
 
   function showEndingScreenElement(fade = false) {
@@ -3859,13 +3862,16 @@
     } catch (error) {
       audio = null;
     }
-    if (!bossDefeatCutinScreen) {
+    const cutinScreen = reason === "survive" ? bossUndefeatedCutinScreen : bossDefeatCutinScreen;
+    if (!cutinScreen) {
       showEndingForClear(reason, { fade: true });
       return;
     }
-    bossDefeatCutinScreen.classList.remove("hidden", "active", "leaving");
-    void bossDefeatCutinScreen.offsetWidth;
-    bossDefeatCutinScreen.classList.add("active");
+    hideBossDefeatCutin();
+    bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_TIME;
+    cutinScreen.classList.remove("hidden", "active", "leaving");
+    void cutinScreen.offsetWidth;
+    cutinScreen.classList.add("active");
   }
 
   function purgeEnemiesForEnding() {
@@ -3890,7 +3896,8 @@
     clearDelay = clearMaxDelay;
     purgeEnemiesForEnding();
     clearEndingFallbackTimer();
-    const fallbackDelay = clearMaxDelay + (reason === "boss" ? BOSS_DEFEAT_CUTIN_TIME + 1.2 : 0.55);
+    const usesEndingCutin = reason === "boss" || reason === "survive";
+    const fallbackDelay = clearMaxDelay + (usesEndingCutin ? BOSS_DEFEAT_CUTIN_TIME + 1.2 : 0.55);
     clearFallbackTimer = setTimeout(() => {
       if (state !== "clearing" && state !== "endingCutin") return;
       try {
@@ -5018,7 +5025,7 @@
       updateList(shockwaves, dt);
       if (clearDelay <= 0) {
         try {
-          if (clearReason === "boss") showBossDefeatCutin(clearReason);
+          if (clearReason === "boss" || clearReason === "survive") showBossDefeatCutin(clearReason);
           else showEndingForClear(clearReason);
         } catch (error) {
           state = "ending";
@@ -5039,6 +5046,7 @@
       bossDefeatCutinDelay -= dt;
       if (bossDefeatCutinDelay <= 0) {
         bossDefeatCutinScreen?.classList.add("leaving");
+        bossUndefeatedCutinScreen?.classList.add("leaving");
         try {
           showEndingForClear(clearReason, { fade: true });
         } catch (error) {
