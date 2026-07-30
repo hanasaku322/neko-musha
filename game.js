@@ -1139,8 +1139,8 @@
     { type: "image", group: "キャラ", name: "ぴぃ丸", src: "assets/characters/hero-samurai.png", desc: "隻眼の猫武者。" },
     { type: "image", group: "キャラ", name: "伝吉", src: "assets/characters/denkichi.png", desc: "クリア後に選べる剣士。" },
     { type: "image", group: "キャラ", name: "終焉の黒角王", src: "assets/characters/overlord.png", desc: "夜の果てに待つ最終ボス。" },
-    { type: "audio", group: "BGM", name: "戦場曲", src: "assets/bgm/field-theme.mp3", desc: "プレイフィールドで流れる曲。" },
-    { type: "audio", group: "BGM", name: "エンディング曲", src: "assets/bgm/ending-theme.mp3", desc: "エンディングで流れる曲。" }
+    { type: "audio", group: "BGM", name: "欠けた月の下で", src: "assets/bgm/field-theme.mp3", desc: "プレイフィールドで流れる戦場曲。" },
+    { type: "audio", group: "BGM", name: "片月のうた", src: "assets/bgm/ending-theme.mp3", desc: "エンディングで流れる曲。" }
   ];
 
   function scaledDamage(value) {
