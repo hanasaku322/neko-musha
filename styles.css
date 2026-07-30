@@ -1399,11 +1399,29 @@ h2 {
   text-shadow: 0 0 14px rgba(88, 243, 228, 0.72);
 }
 
-.archive-audio {
-  width: 100%;
-  max-width: 100%;
-  min-width: 190px;
-  height: 32px;
+.archive-audio-source {
+  display: none;
+}
+
+.archive-audio-button {
+  width: min(168px, 100%);
+  min-height: 38px;
+  padding: 8px 14px;
+  border: 1px solid rgba(88, 243, 228, 0.44);
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(20, 56, 62, 0.9), rgba(88, 243, 228, 0.2));
+  color: #eaffff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 1000;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(88, 243, 228, 0.18);
+}
+
+.archive-audio-button.playing {
+  border-color: rgba(255, 223, 90, 0.74);
+  background: linear-gradient(135deg, rgba(96, 36, 20, 0.92), rgba(255, 198, 78, 0.28));
+  color: #fff3c8;
 }
 
 .archive-track-title {

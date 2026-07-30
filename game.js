@@ -181,6 +181,8 @@
   let state = "title";
   let encyclopediaReturnState = "title";
   let archiveViewer = null;
+  let archiveAudio = null;
+  let archiveAudioButton = null;
   let keys = new Set();
   let pointer = { x: 0, y: 0, startX: 0, startY: 0, id: null, active: false, mode: "screen", dx: 0, dy: 0 };
   let endingZoom = { scale: 1, x: 0, y: 0, pointers: new Map(), startScale: 1, startX: 0, startY: 0, startMidX: 0, startMidY: 0, startDistance: 1, tapX: 0, tapY: 0, tapTime: 0, lastTap: 0 };
@@ -2162,19 +2164,19 @@
   }
 
   function encyclopediaArchiveCard(asset) {
+    const isAudio = asset.type === "audio";
     return `
-      <article class="encyclopedia-card encyclopedia-archive-card ${asset.type === "audio" ? "archive-audio-card" : ""}" style="--accent:${asset.type === "audio" ? "#58f3e4" : "#ffdf5a"}">
+      <article class="encyclopedia-card encyclopedia-archive-card ${isAudio ? "archive-audio-card" : ""}" style="--accent:${isAudio ? "#58f3e4" : "#ffdf5a"}">
         <div class="encyclopedia-art">
-          ${asset.type === "audio"
+          ${isAudio
             ? `<div class="encyclopedia-audio-mark">♪</div>`
             : `<img class="encyclopedia-archive-img" src="${asset.src}" alt="${asset.name}" loading="lazy">`}
         </div>
         <div class="encyclopedia-copy">
           <span class="encyclopedia-type">${asset.group}</span>
           <h3>${asset.name}</h3>
-          ${asset.type !== "audio" ? `<p>${asset.desc}</p>` : ""}
-          ${asset.type === "audio" && asset.songTitle ? `<p class="archive-track-title">曲名：${asset.songTitle}</p>` : ""}
-          ${asset.type === "audio" ? `<audio class="archive-audio" controls preload="none" src="${asset.src}"></audio>` : `<button class="archive-link" type="button" data-archive-image="${asset.src}" data-archive-name="${asset.name}">画像を開く</button>`}
+          ${isAudio && asset.songTitle ? `<p class="archive-track-title">曲名：${asset.songTitle}</p>` : ""}
+          ${isAudio ? `<button class="archive-audio-button" type="button" data-archive-audio="${asset.src}">再生</button><audio class="archive-audio-source" preload="none" src="${asset.src}"></audio>` : `<p>${asset.desc}</p><button class="archive-link" type="button" data-archive-image="${asset.src}" data-archive-name="${asset.name}">画像を開く</button>`}
         </div>
       </article>
     `;
@@ -2183,6 +2185,31 @@
   function closeArchiveViewer() {
     archiveViewer?.remove();
     archiveViewer = null;
+  }
+
+  function toggleArchiveAudio(button) {
+    const src = button?.dataset?.archiveAudio;
+    if (!src) return;
+    if (archiveAudioButton === button && archiveAudio && !archiveAudio.paused) {
+      stopArchiveAudio();
+      return;
+    }
+    stopArchiveAudio();
+    const card = button.closest(".archive-audio-card");
+    const audioElement = card?.querySelector(".archive-audio-source") || new Audio(src);
+    archiveAudio = audioElement;
+    archiveAudioButton = button;
+    button.textContent = "停止";
+    button.classList.add("playing");
+    audioElement.onended = stopArchiveAudio;
+    try {
+      audioElement.currentTime = 0;
+    } catch (error) {
+      // Some mobile browsers reject seeking before metadata is ready.
+    }
+    audioElement.play().catch(() => {
+      stopArchiveAudio();
+    });
   }
 
   function openArchiveViewer(src, name) {
@@ -2335,11 +2362,27 @@
   }
 
   function stopArchiveAudio() {
-    encyclopediaList?.querySelectorAll("audio").forEach(track => {
-      track.pause();
-      track.currentTime = 0;
+    if (archiveAudio) {
+      try {
+        archiveAudio.pause();
+        archiveAudio.currentTime = 0;
+      } catch (error) {
+        // Archive audio is optional; screen navigation should stay responsive.
+      }
+    }
+    encyclopediaList?.querySelectorAll(".archive-audio-source").forEach(track => {
+      if (track === archiveAudio) return;
+      try {
+        track.pause();
+        track.currentTime = 0;
+      } catch (error) {
+        // Ignore unavailable media controls.
+      }
     });
-    closeArchiveViewer();
+    archiveAudioButton?.classList.remove("playing");
+    if (archiveAudioButton) archiveAudioButton.textContent = "再生";
+    archiveAudio = null;
+    archiveAudioButton = null;
   }
 
   function renderEncyclopedia(tab = "items") {
@@ -7399,6 +7442,12 @@
     renderEncyclopedia(button.dataset.encyclopediaTab);
   });
   encyclopediaList?.addEventListener("click", event => {
+    const audioButton = event.target.closest("[data-archive-audio]");
+    if (audioButton) {
+      event.preventDefault();
+      toggleArchiveAudio(audioButton);
+      return;
+    }
     const control = event.target.closest("[data-archive-image], .archive-link");
     if (!control) return;
     const src = control.dataset.archiveImage || control.getAttribute("href");
