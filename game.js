@@ -7156,6 +7156,19 @@
     if (now - lastTouchEndAt < 340) event.preventDefault();
   }
 
+  function canNativeTouchMove(event) {
+    const target = event.target;
+    if (archiveViewer && target?.closest?.(".archive-viewer-stage")) return true;
+    if (state === "ending" && target?.closest?.(".ending-image-viewport")) return true;
+    if (target?.closest?.(".records-panel, .encyclopedia-panel, .shop-panel, .pause-panel, .level-panel, .result-panel")) return true;
+    return false;
+  }
+
+  function preventDocumentSlide(event) {
+    if (canNativeTouchMove(event)) return;
+    event.preventDefault();
+  }
+
   function axisWithDeadzone(value, deadzone = 0.18) {
     const abs = Math.abs(value || 0);
     if (abs < deadzone) return 0;
@@ -7315,6 +7328,7 @@
   document.addEventListener("gesturechange", preventPageZoomGesture, { passive: false });
   document.addEventListener("gestureend", preventPageZoomGesture, { passive: false });
   document.addEventListener("touchend", preventDoubleTapZoom, { passive: false });
+  document.addEventListener("touchmove", preventDocumentSlide, { passive: false, capture: true });
   document.addEventListener("touchmove", event => {
     if (event.touches && event.touches.length > 1 && state !== "ending") event.preventDefault();
   }, { passive: false });
