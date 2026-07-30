@@ -343,7 +343,6 @@
     shotBurstCount: 0,
     shotBurstTimer: 0,
     shotBurstInterval: 0,
-    shotBurstDir: 0,
     shotBurstDenkichi: false,
     slashTimer: 0.8,
     drumTimer: 3.2,
@@ -1394,7 +1393,6 @@
       shotBurstCount: 0,
       shotBurstTimer: 0,
       shotBurstInterval: 0,
-      shotBurstDir: 0,
       shotBurstDenkichi: false
     });
     applyCharacterProfile();
@@ -4271,12 +4269,11 @@
     }
   }
 
-  function queueBasicShotBurst(baseDir, denkichi = player.character === "denkichi", cycleDuration = cooldownTime(player.fireRate, 0.36)) {
+  function queueBasicShotBurst(denkichi = player.character === "denkichi", cycleDuration = cooldownTime(player.fireRate, 0.36)) {
     const burstCount = basicRapidShotCount() - 1;
     player.shotBurstCount = burstCount;
     player.shotBurstInterval = basicRapidShotInterval(cycleDuration);
     player.shotBurstTimer = player.shotBurstInterval;
-    player.shotBurstDir = baseDir;
     player.shotBurstDenkichi = denkichi;
   }
 
@@ -4284,7 +4281,7 @@
     if (player.shotBurstCount <= 0) return;
     player.shotBurstTimer -= dt;
     while (player.shotBurstCount > 0 && player.shotBurstTimer <= 0) {
-      fireBasicShotVolley(player.shotBurstDir, player.shotBurstDenkichi);
+      fireBasicShotVolley(player.dir, player.shotBurstDenkichi);
       player.shotBurstCount -= 1;
       player.shotBurstTimer += player.shotBurstInterval || basicRapidShotInterval();
     }
@@ -4293,7 +4290,7 @@
   function shootDenkichiLaser(cycleDuration) {
     const baseDir = player.dir;
     fireBasicShotVolley(baseDir, true);
-    queueBasicShotBurst(baseDir, true, cycleDuration);
+    queueBasicShotBurst(true, cycleDuration);
     if (audio) audio.sfx("slash");
   }
 
@@ -4304,7 +4301,7 @@
     }
     const baseDir = player.dir;
     fireBasicShotVolley(baseDir, false);
-    queueBasicShotBurst(baseDir, false, cycleDuration);
+    queueBasicShotBurst(false, cycleDuration);
     if (chance(0.3) && audio) audio.sfx("slash");
   }
 
