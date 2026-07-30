@@ -2163,7 +2163,7 @@
 
   function encyclopediaArchiveCard(asset) {
     return `
-      <article class="encyclopedia-card encyclopedia-archive-card" style="--accent:${asset.type === "audio" ? "#58f3e4" : "#ffdf5a"}">
+      <article class="encyclopedia-card encyclopedia-archive-card ${asset.type === "audio" ? "archive-audio-card" : ""}" style="--accent:${asset.type === "audio" ? "#58f3e4" : "#ffdf5a"}">
         <div class="encyclopedia-art">
           ${asset.type === "audio"
             ? `<div class="encyclopedia-audio-mark">♪</div>`
@@ -2172,7 +2172,7 @@
         <div class="encyclopedia-copy">
           <span class="encyclopedia-type">${asset.group}</span>
           <h3>${asset.name}</h3>
-          <p>${asset.desc}</p>
+          ${asset.type !== "audio" ? `<p>${asset.desc}</p>` : ""}
           ${asset.type === "audio" && asset.songTitle ? `<p class="archive-track-title">曲名：${asset.songTitle}</p>` : ""}
           ${asset.type === "audio" ? `<audio class="archive-audio" controls preload="none" src="${asset.src}"></audio>` : `<button class="archive-link" type="button" data-archive-image="${asset.src}" data-archive-name="${asset.name}">画像を開く</button>`}
         </div>

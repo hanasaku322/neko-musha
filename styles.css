@@ -1365,6 +1365,15 @@ h2 {
   min-height: 188px;
 }
 
+.archive-audio-card {
+  min-height: 164px;
+}
+
+.archive-audio-card .encyclopedia-copy {
+  justify-content: center;
+  gap: 8px;
+}
+
 .encyclopedia-archive-img {
   width: 100%;
   max-width: 118px;
@@ -1392,13 +1401,14 @@ h2 {
 
 .archive-audio {
   width: 100%;
-  max-width: 260px;
+  max-width: 100%;
+  min-width: 190px;
   height: 32px;
 }
 
 .archive-track-title {
   width: fit-content;
-  margin: 0 0 8px;
+  margin: 0;
   padding: 4px 8px;
   border: 1px solid rgba(88, 243, 228, 0.28);
   border-radius: 7px;
