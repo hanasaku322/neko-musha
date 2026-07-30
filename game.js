@@ -2091,52 +2091,10 @@
     resetScreenZoomState();
     state = "title";
     gamepadChoiceIndex = 0;
-    endRecordsTouchScroll();
     recordsScreen.classList.add("hidden");
     titleScreen.classList.remove("hidden");
     renderSaveSlots();
     updateTitleMoney();
-  }
-
-  const recordsTouchScroll = {
-    active: false,
-    startY: 0,
-    scrollTop: 0,
-    panel: null
-  };
-
-  function recordsScrollPanelFrom(target) {
-    if (state !== "records") return null;
-    const panel = target?.closest?.(".records-panel") || null;
-    if (panel && panel.scrollHeight > panel.clientHeight + 1) return panel;
-    if (recordsScreen && recordsScreen.scrollHeight > recordsScreen.clientHeight + 1) return recordsScreen;
-    return panel || recordsScreen || null;
-  }
-
-  function startRecordsTouchScroll(event) {
-    if (event.touches?.length !== 1) return;
-    const panel = recordsScrollPanelFrom(event.target);
-    if (!panel) return;
-    recordsTouchScroll.active = true;
-    recordsTouchScroll.startY = event.touches[0].clientY;
-    recordsTouchScroll.scrollTop = panel.scrollTop;
-    recordsTouchScroll.panel = panel;
-  }
-
-  function moveRecordsTouchScroll(event) {
-    if (!recordsTouchScroll.active || event.touches?.length !== 1) return;
-    const panel = recordsTouchScroll.panel;
-    if (!panel || state !== "records") return;
-    const deltaY = recordsTouchScroll.startY - event.touches[0].clientY;
-    if (Math.abs(deltaY) < 2) return;
-    panel.scrollTop = recordsTouchScroll.scrollTop + deltaY;
-    event.preventDefault();
-    event.stopPropagation();
-  }
-
-  function endRecordsTouchScroll() {
-    recordsTouchScroll.active = false;
-    recordsTouchScroll.panel = null;
   }
 
   function encyclopediaItemCard(entry) {
@@ -7357,10 +7315,6 @@
   recordsButton.addEventListener("click", openRecords);
   encyclopediaButton.addEventListener("click", openEncyclopedia);
   recordsCloseButton.addEventListener("click", closeRecords);
-  recordsScreen?.addEventListener("touchstart", startRecordsTouchScroll, { passive: true });
-  recordsScreen?.addEventListener("touchmove", moveRecordsTouchScroll, { passive: false });
-  recordsScreen?.addEventListener("touchend", endRecordsTouchScroll);
-  recordsScreen?.addEventListener("touchcancel", endRecordsTouchScroll);
   encyclopediaCloseButton.addEventListener("click", closeEncyclopedia);
   encyclopediaTabs.addEventListener("click", event => {
     const button = event.target.closest("[data-encyclopedia-tab]");
