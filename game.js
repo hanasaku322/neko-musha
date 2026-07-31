@@ -4419,9 +4419,9 @@
   function doFireArrows() {
     const evolved = evolvedItems.has("heavenVolley");
     const baseLevel = clamp(evolved ? player.arrows - 3 : player.arrows, 1, 5);
-    const count = evolved ? 5 + baseLevel * 2 : 1 + baseLevel * 2;
+    const count = evolved ? 4 + Math.ceil(baseLevel * 1.6) : 1 + Math.ceil(baseLevel * 1.55);
     const radius = (170 + player.arrows * 18) * Math.min(player.area, 1.35);
-    const arrowDamage = scaledDamage(player.damage * (evolved ? 0.78 + baseLevel * 0.11 : 0.62 + baseLevel * 0.1));
+    const arrowDamage = scaledDamage(player.damage * (evolved ? 0.68 + baseLevel * 0.095 : 0.54 + baseLevel * 0.085));
     const targets = nearestEnemies(count, radius);
     for (let i = 0; i < count; i++) {
       const target = targets[i % Math.max(1, targets.length)];
@@ -5313,7 +5313,7 @@
     }
     if (player.arrows && player.arrowTimer <= 0) {
       doFireArrows();
-      player.arrowTimer = cooldownTime(1.7 - player.arrows * 0.12, 0.54);
+      player.arrowTimer = cooldownTime(1.82 - player.arrows * 0.1, 0.64);
     }
     if (player.orbit || player.sutra) {
       doOrbitDamage(dt);
