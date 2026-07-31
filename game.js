@@ -4534,7 +4534,7 @@
     const speed = 1.35 + player.aura * 0.05;
     const hitDamage = scaledDamage(player.damage * (0.34 + player.aura * 0.035));
     const energy = getAuraOrbEnergy();
-    const reviveDelay = Math.max(2.4, 5.0 - player.aura * 0.22);
+    const reviveDelay = Math.max(1.6, 4.8 - player.aura * 0.32);
     for (let i = 0; i < player.auraOrbs.length; i++) {
       const orb = player.auraOrbs[i];
       orb.cooldown = Math.max(0, orb.cooldown - dt);
@@ -4552,19 +4552,17 @@
       const a = -elapsed * speed + i * TAU / player.auraOrbs.length;
       const ox = player.x + Math.cos(a) * radius;
       const oy = player.y + Math.sin(a) * radius;
-      const orbRadius = 12 + player.aura * 1.2;
+      const orbRadius = 14 + player.aura * 1.35;
       for (const enemy of enemies) {
         const dx = enemy.x - ox;
         const dy = enemy.y - oy;
         if (dx * dx + dy * dy > sqr(enemy.r + orbRadius)) continue;
         damageEnemy(enemy, hitDamage, Math.atan2(enemy.y - player.y, enemy.x - player.x));
-        orb.energy -= hitDamage;
+        orb.active = false;
+        orb.energy = 0;
+        orb.respawn = reviveDelay;
         orb.cooldown = 0.16;
-        if (orb.energy <= 0) {
-          orb.active = false;
-          orb.respawn = reviveDelay;
-          burst(ox, oy, "#58f3e4", 10, 5);
-        }
+        burst(ox, oy, "#58f3e4", 10, 5);
         break;
       }
     }
@@ -6219,13 +6217,13 @@
         ctx.beginPath();
         if (orb.active) {
           if (foxAegis) {
-            ctx.moveTo(x, y - (10 + player.aura * 0.75) * pulse);
-            ctx.lineTo(x + (8 + player.aura * 0.5) * pulse, y);
-            ctx.lineTo(x, y + (10 + player.aura * 0.75) * pulse);
-            ctx.lineTo(x - (8 + player.aura * 0.5) * pulse, y);
+            ctx.moveTo(x, y - (11 + player.aura * 0.8) * pulse);
+            ctx.lineTo(x + (9 + player.aura * 0.55) * pulse, y);
+            ctx.lineTo(x, y + (11 + player.aura * 0.8) * pulse);
+            ctx.lineTo(x - (9 + player.aura * 0.55) * pulse, y);
             ctx.closePath();
           } else {
-            ctx.arc(x, y, (7 + player.aura * 0.7) * pulse, 0, TAU);
+            ctx.arc(x, y, (8 + player.aura * 0.75) * pulse, 0, TAU);
           }
           ctx.fill();
           ctx.fillStyle = foxAegis ? "#fff1a8" : "#fff0b8";
@@ -6235,7 +6233,7 @@
         } else {
           ctx.strokeStyle = foxAegis ? "#ff8a3d" : "#58f3e4";
           ctx.lineWidth = 2;
-          ctx.arc(x, y, 7 + player.aura * 0.5, 0, TAU);
+          ctx.arc(x, y, 8 + player.aura * 0.55, 0, TAU);
           ctx.stroke();
         }
       }
