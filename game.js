@@ -5768,7 +5768,7 @@
       if (audio) audio.sfx("select");
     }
     if (type === "bomb") {
-      areaDamage(player.x, player.y, 520, scaledDamage(player.damage * 2.2), "#ffb93f");
+      areaDamage(player.x, player.y, 520, scaledDamage(player.damage * 2.6), "#ffb93f");
       shockwaves.push({ x: player.x, y: player.y, r: 40, life: 0.52, max: 0.52, color: "#ffb93f", power: 0 });
       camera.shake = Math.max(camera.shake, 10);
       showToast({ sprite: 2 }, "鬼太鼓が轟いた");
