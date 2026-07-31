@@ -4598,8 +4598,8 @@
   }
 
   function doSmokeBomb() {
-    const radius = 120 + player.smoke * 28;
-    shockwaves.push({ x: player.x, y: player.y, r: 20, life: 0.46, max: 0.46, color: "#b8b8c8", power: 0 });
+    const radius = 150 + player.smoke * 34;
+    shockwaves.push({ x: player.x, y: player.y, r: 28, life: 0.5, max: 0.5, color: "#b8b8c8", power: 0 });
     burst(player.x, player.y, "#b8b8c8", 22, 7);
     for (const enemy of enemies) {
       if (d2(player, enemy) < sqr(radius + enemy.r)) {
