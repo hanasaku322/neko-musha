@@ -4924,7 +4924,7 @@
     const angle = rand(0, TAU);
     const range = rand(260, Math.max(W, H) * 0.62);
     const roll = Math.random() + player.luck * 0.035;
-    const type = roll > 0.962 ? "fury" : roll > 0.78 ? "magnet" : "heal";
+    const type = roll > 0.962 ? "fury" : roll > 0.72 ? "magnet" : "heal";
     const point = keepPointInMap(player.x + Math.cos(angle) * range, player.y + Math.sin(angle) * range, 24);
     spawnPickup(point.x, point.y, type, { source: "field" });
   }
