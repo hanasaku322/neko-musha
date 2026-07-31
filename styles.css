@@ -98,7 +98,7 @@ button {
   background:
     linear-gradient(90deg, rgba(5, 4, 7, 0.02) 0%, rgba(5, 4, 7, 0.08) 48%, rgba(5, 4, 7, 0.82) 100%),
     linear-gradient(0deg, rgba(5, 4, 7, 0.9) 0%, rgba(5, 4, 7, 0.08) 58%),
-    url("assets/title-neko-musha.png") left center / auto 100% no-repeat,
+    url("assets/title-neko-musha.webp") left center / auto 100% no-repeat,
     #08070b;
   backdrop-filter: none;
 }
@@ -495,7 +495,7 @@ h2 {
   padding: clamp(18px, 4vw, 46px);
   background:
     linear-gradient(90deg, rgba(4, 3, 2, 0.05) 0%, rgba(4, 3, 2, 0.18) 42%, rgba(4, 3, 2, 0.82) 100%),
-    url("assets/shop-neko-musha.png") center center / cover no-repeat,
+    url("assets/shop-neko-musha.webp") center center / cover no-repeat,
     #070504;
   backdrop-filter: none;
 }
@@ -982,7 +982,7 @@ h2 {
   background:
     radial-gradient(circle at 50% 34%, rgba(255, 211, 94, 0.18), transparent 34%),
     linear-gradient(90deg, rgba(5, 3, 3, 0.88), rgba(5, 3, 3, 0.34) 48%, rgba(5, 3, 3, 0.18)),
-    url("assets/records-neko-musha.png") center / cover no-repeat;
+    url("assets/records-neko-musha.webp") center / cover no-repeat;
   touch-action: pan-y;
 }
 
@@ -1038,7 +1038,7 @@ h2 {
   border-radius: 8px;
   background:
     linear-gradient(90deg, rgba(0, 0, 0, 0.86), rgba(16, 8, 5, 0.68) 46%, rgba(0, 0, 0, 0.18)),
-    url("assets/records-neko-musha.png") center / cover no-repeat;
+    url("assets/records-neko-musha.webp") center / cover no-repeat;
   color: #fff7e8;
   text-align: left;
 }
@@ -1247,7 +1247,7 @@ h2 {
   height: 68px;
   border: 1px solid rgba(255, 232, 164, 0.28);
   border-radius: 8px;
-  background-image: url("assets/item-atlas.png");
+  background-image: url("assets/item-atlas.webp");
   background-size: 500% 800%;
   box-shadow:
     0 0 18px rgba(255, 198, 78, 0.2),
@@ -1349,7 +1349,7 @@ h2 {
   height: 30px;
   border: 1px solid rgba(255, 232, 164, 0.28);
   border-radius: 6px;
-  background-image: url("assets/item-atlas.png");
+  background-image: url("assets/item-atlas.webp");
   background-size: 500% 800%;
   box-shadow:
     0 0 12px rgba(255, 198, 78, 0.16),
@@ -2347,7 +2347,7 @@ h2 {
 .dock-icon,
 .toast-icon {
   display: block;
-  background-image: url("assets/item-atlas.png");
+  background-image: url("assets/item-atlas.webp");
   background-repeat: no-repeat;
   background-size: 500% 800%;
   border: 1px solid rgba(255, 232, 164, 0.28);
@@ -2794,7 +2794,7 @@ h2 {
     text-align: right;
     background:
       linear-gradient(0deg, rgba(5, 4, 7, 0.92) 0%, rgba(5, 4, 7, 0.16) 62%),
-      url("assets/title-neko-musha.png") center 38% / min(86vw, 62vh) auto no-repeat,
+      url("assets/title-neko-musha.webp") center 38% / min(86vw, 62vh) auto no-repeat,
       #08070b;
   }
 
@@ -2929,7 +2929,7 @@ h2 {
     padding: 14px;
     background:
       linear-gradient(0deg, rgba(4, 3, 2, 0.88) 0%, rgba(4, 3, 2, 0.2) 64%),
-      url("assets/shop-neko-musha.png") 42% center / auto 100% no-repeat,
+      url("assets/shop-neko-musha.webp") 42% center / auto 100% no-repeat,
       #070504;
   }
 
@@ -3454,7 +3454,7 @@ h2 {
     background:
       linear-gradient(90deg, rgba(5, 4, 7, 0.08) 0%, rgba(5, 4, 7, 0.22) 48%, rgba(5, 4, 7, 0.86) 100%),
       linear-gradient(0deg, rgba(5, 4, 7, 0.78) 0%, rgba(5, 4, 7, 0.04) 64%),
-      url("assets/title-neko-musha.png") left center / auto 112% no-repeat,
+      url("assets/title-neko-musha.webp") left center / auto 112% no-repeat,
       #08070b;
   }
 

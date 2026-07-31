@@ -218,13 +218,13 @@
   let clearFallbackTimer = 0;
 
   const itemAtlas = new Image();
-  itemAtlas.src = "assets/item-atlas.png";
+  itemAtlas.src = "assets/item-atlas.webp";
   const stageImage = new Image();
-  stageImage.src = "assets/sengoku-stage.png";
+  stageImage.src = "assets/sengoku-stage.webp";
   const furyCutinImage = new Image();
-  furyCutinImage.src = "assets/neko-fury-cutin.png";
+  furyCutinImage.src = "assets/neko-fury-cutin.webp";
   const denkichiFuryCutinImage = new Image();
-  denkichiFuryCutinImage.src = "assets/denkichi-fury-cutin.png";
+  denkichiFuryCutinImage.src = "assets/denkichi-fury-cutin.webp";
   const denkichiHandGlowRightImage = new Image();
   denkichiHandGlowRightImage.src = "assets/characters/denkichi-hand-glow-right.png";
   const denkichiHandGlowLeftImage = new Image();
@@ -234,9 +234,9 @@
   const denkichiAttackLeftImage = new Image();
   denkichiAttackLeftImage.src = "assets/characters/denkichi-attack-left.png";
   const bossDefeatCutinImage = new Image();
-  bossDefeatCutinImage.src = "assets/boss-defeat-cutin.png";
+  bossDefeatCutinImage.src = "assets/boss-defeat-cutin.webp";
   const bossUndefeatedCutinImage = new Image();
-  bossUndefeatedCutinImage.src = "assets/boss-undefeated-cutin.png";
+  bossUndefeatedCutinImage.src = "assets/boss-undefeated-cutin.webp";
   const characterSpritePaths = {
     player: "assets/characters/hero-samurai.png",
     wraith: "assets/characters/wraith.png",
@@ -1137,15 +1137,15 @@
   }
 
   const archiveAssets = [
-    { type: "image", group: "舞台", name: "タイトル絵", src: "assets/title-neko-musha.png", desc: "猫武者の旅立ちを飾る一枚。" },
-    { type: "image", group: "舞台", name: "戦国の夜", src: "assets/sengoku-stage.png", desc: "妖気が漂う戦場背景。" },
-    { type: "image", group: "舞台", name: "武器屋", src: "assets/shop-neko-musha.png", desc: "出陣前に力を整える武器屋。" },
-    { type: "image", group: "舞台", name: "戦績", src: "assets/records-neko-musha.png", desc: "これまでの戦いを刻む戦績画面。" },
-    { type: "image", group: "物語", name: "エンディング", src: "assets/ending-neko-musha.png", desc: "夜を越えた者だけが見られる結末。" },
-    { type: "image", group: "演出", name: "猫神奥義札", src: "assets/neko-fury-cutin.png", desc: "ぴぃ丸の奥義発動カットイン。" },
-    { type: "image", group: "演出", name: "宝物発見", src: "assets/jackpot-treasure-cutin.png", desc: "猫箱大当たりのカットイン。" },
-    { type: "image", group: "演出", name: "伝吉奥義札", src: "assets/denkichi-fury-cutin.png", desc: "伝吉の奥義発動カットイン。" },
-    { type: "image", group: "演出", name: "伝吉登場", src: "assets/denkichi-jackpot-cutin.png", desc: "伝吉の大当たりカットイン。" },
+    { type: "image", group: "舞台", name: "タイトル絵", src: "assets/title-neko-musha.webp", desc: "猫武者の旅立ちを飾る一枚。" },
+    { type: "image", group: "舞台", name: "戦国の夜", src: "assets/sengoku-stage.webp", desc: "妖気が漂う戦場背景。" },
+    { type: "image", group: "舞台", name: "武器屋", src: "assets/shop-neko-musha.webp", desc: "出陣前に力を整える武器屋。" },
+    { type: "image", group: "舞台", name: "戦績", src: "assets/records-neko-musha.webp", desc: "これまでの戦いを刻む戦績画面。" },
+    { type: "image", group: "物語", name: "エンディング", src: "assets/ending-neko-musha.webp", desc: "夜を越えた者だけが見られる結末。" },
+    { type: "image", group: "演出", name: "猫神奥義札", src: "assets/neko-fury-cutin.webp", desc: "ぴぃ丸の奥義発動カットイン。" },
+    { type: "image", group: "演出", name: "宝物発見", src: "assets/jackpot-treasure-cutin.webp", desc: "猫箱大当たりのカットイン。" },
+    { type: "image", group: "演出", name: "伝吉奥義札", src: "assets/denkichi-fury-cutin.webp", desc: "伝吉の奥義発動カットイン。" },
+    { type: "image", group: "演出", name: "伝吉登場", src: "assets/denkichi-jackpot-cutin.webp", desc: "伝吉の大当たりカットイン。" },
     { type: "image", group: "キャラ", name: "ぴぃ丸", src: "assets/characters/hero-samurai.png", desc: "隻眼の猫武者。" },
     { type: "image", group: "キャラ", name: "伝吉", src: "assets/characters/denkichi.png", desc: "クリア後に選べる剣士。" },
     { type: "image", group: "キャラ", name: "終焉の黒角王", src: "assets/characters/overlord.png", desc: "夜の果てに待つ最終ボス。" },
@@ -3245,9 +3245,9 @@
     const playCutin = next => {
       levelScreen.querySelector("h2").textContent = "まだ終わらぬ";
       const cutin = document.createElement("div");
-      const cutinSrc = player.character === "denkichi" ? "assets/denkichi-jackpot-cutin.png" : "assets/jackpot-treasure-cutin.png";
+      const cutinSrc = player.character === "denkichi" ? "assets/denkichi-jackpot-cutin.webp" : "assets/jackpot-treasure-cutin.webp";
       cutin.className = "jackpot-cutin jackpot-cutin-image";
-      cutin.innerHTML = `<img src="assets/jackpot-treasure-cutin.png" alt=""><span class="cutin-badge">八連秘宝へ昇格</span>`;
+      cutin.innerHTML = `<img src="assets/jackpot-treasure-cutin.webp" alt=""><span class="cutin-badge">八連秘宝へ昇格</span>`;
       cutin.querySelector("img").src = cutinSrc;
       upgradeChoices.appendChild(cutin);
       if (audio) audio.sfx("cutin");

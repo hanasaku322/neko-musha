@@ -18,9 +18,9 @@ GitHub側の設定:
 4. `Deploy from a branch` を選ぶ
 5. `main` / `/ root` を選んで保存する
 
-SNSカードには `assets/neko-fury-cutin.png` を使う設定を入れています。XやLINEなどで画像が出ない場合は、`index.html` の `og:image` と `twitter:image` を公開先の絶対URLに変えると安定します。
+SNSカードには `assets/og-neko-fury-cutin.jpg` を使う設定を入れています。XやLINEなどで画像が出ない場合は、`index.html` の `og:image` と `twitter:image` を公開先の絶対URLに変えると安定します。
 
 ```html
-<meta property="og:image" content="https://ユーザー名.github.io/リポジトリ名/assets/neko-fury-cutin.png">
-<meta name="twitter:image" content="https://ユーザー名.github.io/リポジトリ名/assets/neko-fury-cutin.png">
+<meta property="og:image" content="https://ユーザー名.github.io/リポジトリ名/assets/og-neko-fury-cutin.jpg">
+<meta name="twitter:image" content="https://ユーザー名.github.io/リポジトリ名/assets/og-neko-fury-cutin.jpg">
 ```
