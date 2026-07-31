@@ -5578,7 +5578,7 @@
       }
       return;
     }
-    if (enemy.shootCd > 0 || distanceToPlayer > 980) return;
+    if (enemy.shootCd > 0) return;
     enemy.castTimer = 0.78;
     enemy.castFired = false;
     enemy.vx *= 0.18;
