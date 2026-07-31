@@ -4158,10 +4158,10 @@
     let type = "wraith";
     if (boss) type = elapsed >= OVERLORD_START_TIME && countEnemiesByType("overlord") < getOverlordTargetCount() ? "overlord" : elapsed > 420 ? "oniElite" : "boss";
     else if (shouldForceOverlord(roll)) type = "overlord";
-    else if (elapsed >= ENDGAME_TIME) type = roll > 0.76 ? "oniElite" : roll > 0.5 ? "armored" : roll > 0.24 ? "shinobi" : "tengu";
-    else if (elapsed > 420) type = roll > 0.82 ? "oniElite" : roll > 0.56 ? "armored" : roll > 0.32 ? "shinobi" : "tengu";
-    else if (elapsed > 300) type = roll > 0.7 ? "armored" : roll > 0.42 ? "shinobi" : roll > 0.16 ? "tengu" : "ashigaru";
-    else if (elapsed > 180) type = roll > 0.62 ? "shinobi" : roll > 0.32 ? "tengu" : "ashigaru";
+    else if (elapsed >= ENDGAME_TIME) type = roll > 0.76 ? "oniElite" : roll > 0.5 ? "armored" : roll > 0.292 ? "shinobi" : "tengu";
+    else if (elapsed > 420) type = roll > 0.82 ? "oniElite" : roll > 0.56 ? "armored" : roll > 0.368 ? "shinobi" : "tengu";
+    else if (elapsed > 300) type = roll > 0.7 ? "armored" : roll > 0.476 ? "shinobi" : roll > 0.16 ? "tengu" : "ashigaru";
+    else if (elapsed > 180) type = roll > 0.696 ? "shinobi" : roll > 0.32 ? "tengu" : "ashigaru";
     else if (elapsed > 90) type = roll > 0.68 ? "tengu" : roll > 0.36 ? "ashigaru" : "wraith";
     else type = roll > 0.72 ? "ashigaru" : "wraith";
     if (spawn.y < SKY_LINE_Y) {
