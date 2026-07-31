@@ -207,6 +207,8 @@
   let clearDelay = 0;
   let clearMaxDelay = CLEAR_TRANSITION_TIME;
   let bossDefeatCutinDelay = 0;
+  let bossDefeatCutinStartedAt = 0;
+  let bossDefeatCutinOutStartedAt = 0;
   let clearReason = "survive";
   let lastResult = null;
   let levelChoiceReadyAt = 0;
@@ -1868,6 +1870,8 @@
 
   function hideBossDefeatCutin() {
     bossDefeatCutinDelay = 0;
+    bossDefeatCutinStartedAt = 0;
+    bossDefeatCutinOutStartedAt = 0;
     for (const screen of [bossDefeatCutinScreen, bossUndefeatedCutinScreen]) {
       screen?.classList.add("hidden");
       screen?.classList.remove("active", "leaving");
@@ -3211,7 +3215,16 @@
     let targetCount = baseCount;
     let reelIndex = 0;
     let ready = false;
-    const cutinAvailable = baseCount >= 5 && winners.length >= 8 && chance(0.34 + player.luck * 0.22);
+    const cutinAvailable = baseCount >= 5 && winners.length >= 8 && chance(0.52 + player.luck * 0.24);
+    if (DEBUG_MODE) {
+      console.info("[猫箱大当たり]", {
+        source: options.source || "level",
+        tier: options.tier || "-",
+        baseCount,
+        winners: winners.length,
+        cutinAvailable
+      });
+    }
 
     burst(player.x, player.y, "#ffdf5a", 76, 12);
     shockwaves.push({ x: player.x, y: player.y, r: 28, life: 0.68, max: 0.68, color: "#ffdf5a", power: 0 });
@@ -3219,6 +3232,15 @@
       audio.sfx("chest");
       audio.startJackpot();
     }
+
+    const jackpotCutinSrc = () => player.character === "denkichi" ? "assets/denkichi-jackpot-cutin.webp" : "assets/jackpot-treasure-cutin.webp";
+    const showJackpotCutin = (label, extraClass = "") => {
+      const cutin = document.createElement("div");
+      cutin.className = `jackpot-cutin jackpot-cutin-image ${extraClass}`.trim();
+      cutin.innerHTML = `<img src="${jackpotCutinSrc()}" alt=""><span class="cutin-badge">${label}</span>`;
+      levelScreen.appendChild(cutin);
+      return cutin;
+    };
 
     const finish = () => {
       if (ready || state !== "level") return;
@@ -3249,12 +3271,7 @@
 
     const playCutin = next => {
       levelScreen.querySelector("h2").textContent = "まだ終わらぬ";
-      const cutin = document.createElement("div");
-      const cutinSrc = player.character === "denkichi" ? "assets/denkichi-jackpot-cutin.webp" : "assets/jackpot-treasure-cutin.webp";
-      cutin.className = "jackpot-cutin jackpot-cutin-image";
-      cutin.innerHTML = `<img src="assets/jackpot-treasure-cutin.webp" alt=""><span class="cutin-badge">八連秘宝へ昇格</span>`;
-      cutin.querySelector("img").src = cutinSrc;
-      upgradeChoices.appendChild(cutin);
+      const cutin = showJackpotCutin("八連秘宝へ昇格", "jackpot-upgrade-cutin");
       if (audio) audio.sfx("cutin");
       burst(player.x, player.y, "#ff304f", 120, 16);
       shockwaves.push({ x: player.x, y: player.y, r: 54, life: 0.86, max: 0.86, color: "#ff304f", power: 0 });
@@ -3908,6 +3925,8 @@
     state = "endingCutin";
     clearReason = reason;
     bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_TIME;
+    bossDefeatCutinStartedAt = performance.now();
+    bossDefeatCutinOutStartedAt = 0;
     endingScreen?.classList.add("hidden");
     endingScreen?.classList.remove("ending-fade-in");
     pauseScreen?.classList.add("hidden");
@@ -3929,9 +3948,11 @@
     }
     hideBossDefeatCutin();
     bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_TIME;
+    bossDefeatCutinStartedAt = performance.now();
     cutinScreen.classList.remove("hidden", "active", "leaving");
     void cutinScreen.offsetWidth;
     cutinScreen.classList.add("active");
+    if (DEBUG_MODE) console.info("[ending-cutin:start]", { reason, seconds: BOSS_DEFEAT_CUTIN_TIME });
   }
 
   function purgeEnemiesForEnding() {
@@ -5113,18 +5134,22 @@
       return;
     }
     if (state === "endingCutin") {
-      bossDefeatCutinDelay -= dt;
-      if (bossDefeatCutinDelay <= 0) {
+      const cutinElapsed = bossDefeatCutinStartedAt ? (performance.now() - bossDefeatCutinStartedAt) / 1000 : BOSS_DEFEAT_CUTIN_TIME;
+      bossDefeatCutinDelay = Math.max(0, BOSS_DEFEAT_CUTIN_TIME - cutinElapsed);
+      if (cutinElapsed >= BOSS_DEFEAT_CUTIN_TIME) {
         bossDefeatCutinScreen?.classList.add("leaving");
         bossUndefeatedCutinScreen?.classList.add("leaving");
         state = "endingCutinOut";
         bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_EXIT_TIME;
+        bossDefeatCutinOutStartedAt = performance.now();
+        if (DEBUG_MODE) console.info("[ending-cutin:out]", { reason: clearReason, seconds: BOSS_DEFEAT_CUTIN_EXIT_TIME });
       }
       return;
     }
     if (state === "endingCutinOut") {
-      bossDefeatCutinDelay -= dt;
-      if (bossDefeatCutinDelay <= 0) {
+      const outElapsed = bossDefeatCutinOutStartedAt ? (performance.now() - bossDefeatCutinOutStartedAt) / 1000 : BOSS_DEFEAT_CUTIN_EXIT_TIME;
+      bossDefeatCutinDelay = Math.max(0, BOSS_DEFEAT_CUTIN_EXIT_TIME - outElapsed);
+      if (outElapsed >= BOSS_DEFEAT_CUTIN_EXIT_TIME) {
         try {
           showEndingForClear(clearReason, { fade: true });
         } catch (error) {
@@ -7168,7 +7193,10 @@
       console.error("game loop recovered", error);
       frameCarry = 0;
       if (state === "clearing") forceEndingScreen(clearReason);
-      else if (state === "endingCutin" || state === "endingCutinOut") forceEndingScreen(clearReason);
+      else if (state === "endingCutin" || state === "endingCutinOut") {
+        bossDefeatCutinDelay = Math.max(bossDefeatCutinDelay, 0.5);
+        if (DEBUG_MODE) console.info("[ending-cutin:recover]", { state, reason: clearReason });
+      }
       else if (state === "ending") endingScreen?.classList.remove("hidden");
     } finally {
       requestAnimationFrame(loop);
