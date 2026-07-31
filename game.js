@@ -4100,6 +4100,18 @@
     return roll > 0.86 - pressure * 0.12;
   }
 
+  function ensureOverlordSpawnedAtStartTime() {
+    if (elapsed < OVERLORD_START_TIME || overlordSpawned || countEnemiesByType("overlord") > 0) return;
+    if (enemies.length >= MAX_ENEMIES) {
+      const removable = enemies.findIndex(enemy => !["overlord", "boss", "oniElite", "senryoThief"].includes(enemy.type));
+      if (removable >= 0) enemies.splice(removable, 1);
+    }
+    const previousBossTimer = bossTimer;
+    bossTimer = 0;
+    spawnEnemy(false);
+    if (!overlordSpawned) bossTimer = previousBossTimer;
+  }
+
   function spawnSenryoThief() {
     if (enemies.length >= MAX_ENEMIES || countEnemiesByType("senryoThief") > 0) return false;
     const spawn = spawnVisiblePointAroundPlayer();
@@ -5149,6 +5161,8 @@
       updateHud();
       return;
     }
+
+    ensureOverlordSpawnedAtStartTime();
 
     if (spawnTimer <= 0) {
       const wave = 1 + Math.floor(elapsed / 26);
