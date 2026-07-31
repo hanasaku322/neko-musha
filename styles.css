@@ -708,7 +708,7 @@ h2 {
 }
 
 .boss-defeat-cutin.active img {
-  animation: bossDefeatImage 3.9s ease-out both;
+  animation: bossDefeatImage 5.2s ease-out both;
 }
 
 .boss-defeat-cutin.leaving {

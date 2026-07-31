@@ -67,7 +67,8 @@
   const ENDGAME_TIME = 600;
   const ENDING_TIME = 900;
   const CLEAR_TRANSITION_TIME = 2.8;
-  const BOSS_DEFEAT_CUTIN_TIME = 3.9;
+  const BOSS_DEFEAT_CUTIN_TIME = 5.2;
+  const BOSS_DEFEAT_CUTIN_EXIT_TIME = 0.75;
   const OVERLORD_START_TIME = 600;
   const TARGET_FPS = 30;
   const FIELD_CAMERA_ZOOM = 1.06;
@@ -232,6 +233,10 @@
   denkichiAttackRightImage.src = "assets/characters/denkichi-attack-right.png";
   const denkichiAttackLeftImage = new Image();
   denkichiAttackLeftImage.src = "assets/characters/denkichi-attack-left.png";
+  const bossDefeatCutinImage = new Image();
+  bossDefeatCutinImage.src = "assets/boss-defeat-cutin.png";
+  const bossUndefeatedCutinImage = new Image();
+  bossUndefeatedCutinImage.src = "assets/boss-undefeated-cutin.png";
   const characterSpritePaths = {
     player: "assets/characters/hero-samurai.png",
     wraith: "assets/characters/wraith.png",
@@ -3938,9 +3943,9 @@
     purgeEnemiesForEnding();
     clearEndingFallbackTimer();
     const usesEndingCutin = reason === "boss" || reason === "survive";
-    const fallbackDelay = clearMaxDelay + (usesEndingCutin ? BOSS_DEFEAT_CUTIN_TIME + 1.2 : 0.55);
+    const fallbackDelay = clearMaxDelay + (usesEndingCutin ? BOSS_DEFEAT_CUTIN_TIME + BOSS_DEFEAT_CUTIN_EXIT_TIME + 1.2 : 0.55);
     clearFallbackTimer = setTimeout(() => {
-      if (state !== "clearing" && state !== "endingCutin") return;
+      if (state !== "clearing" && state !== "endingCutin" && state !== "endingCutinOut") return;
       try {
         forceEndingScreen(clearReason);
       } catch (error) {
@@ -5087,6 +5092,14 @@
       if (bossDefeatCutinDelay <= 0) {
         bossDefeatCutinScreen?.classList.add("leaving");
         bossUndefeatedCutinScreen?.classList.add("leaving");
+        state = "endingCutinOut";
+        bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_EXIT_TIME;
+      }
+      return;
+    }
+    if (state === "endingCutinOut") {
+      bossDefeatCutinDelay -= dt;
+      if (bossDefeatCutinDelay <= 0) {
         try {
           showEndingForClear(clearReason, { fade: true });
         } catch (error) {
@@ -7128,7 +7141,7 @@
       console.error("game loop recovered", error);
       frameCarry = 0;
       if (state === "clearing") forceEndingScreen(clearReason);
-      else if (state === "endingCutin") forceEndingScreen(clearReason);
+      else if (state === "endingCutin" || state === "endingCutinOut") forceEndingScreen(clearReason);
       else if (state === "ending") endingScreen?.classList.remove("hidden");
     } finally {
       requestAnimationFrame(loop);
