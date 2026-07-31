@@ -237,6 +237,10 @@
   bossDefeatCutinImage.src = "assets/boss-defeat-cutin.webp";
   const bossUndefeatedCutinImage = new Image();
   bossUndefeatedCutinImage.src = "assets/boss-undefeated-cutin.webp";
+  const endingImageSources = {
+    piimaru: "assets/ending-neko-musha.webp",
+    denkichi: "assets/ending-denkichi.jpg"
+  };
   const characterSpritePaths = {
     player: "assets/characters/hero-samurai.png",
     wraith: "assets/characters/wraith.png",
@@ -1142,6 +1146,7 @@
     { type: "image", group: "舞台", name: "武器屋", src: "assets/shop-neko-musha.webp", desc: "出陣前に力を整える武器屋。" },
     { type: "image", group: "舞台", name: "戦績", src: "assets/records-neko-musha.webp", desc: "これまでの戦いを刻む戦績画面。" },
     { type: "image", group: "物語", name: "エンディング", src: "assets/ending-neko-musha.webp", desc: "夜を越えた者だけが見られる結末。" },
+    { type: "image", group: "物語", name: "伝吉エンディング", src: "assets/ending-denkichi.jpg", desc: "伝吉で夜を越えた時の結末。" },
     { type: "image", group: "演出", name: "猫神奥義札", src: "assets/neko-fury-cutin.webp", desc: "ぴぃ丸の奥義発動カットイン。" },
     { type: "image", group: "演出", name: "宝物発見", src: "assets/jackpot-treasure-cutin.webp", desc: "猫箱大当たりのカットイン。" },
     { type: "image", group: "演出", name: "伝吉奥義札", src: "assets/denkichi-fury-cutin.webp", desc: "伝吉の奥義発動カットイン。" },
@@ -3724,6 +3729,13 @@
     applyEndingZoom();
   }
 
+  function updateEndingImageForCharacter() {
+    if (!endingImage) return;
+    const src = player.character === "denkichi" ? endingImageSources.denkichi : endingImageSources.piimaru;
+    if (!endingImage.getAttribute("src")?.endsWith(src)) endingImage.src = src;
+    endingImage.alt = player.character === "denkichi" ? "伝吉 エンディング" : "猫武者 エンディング";
+  }
+
   function zoomEndingAt(clientX, clientY, scale) {
     if (!endingImageViewport) return;
     if (scale <= 1.01) {
@@ -3843,6 +3855,7 @@
     shopScreen?.classList.add("hidden");
     recordsScreen?.classList.add("hidden");
     encyclopediaScreen?.classList.add("hidden");
+    updateEndingImageForCharacter();
     resetEndingZoom();
     hideBossDefeatCutin();
     showEndingScreenElement(false);
@@ -3874,6 +3887,7 @@
     encyclopediaScreen?.classList.add("hidden");
     if (upgradeChoices) upgradeChoices.innerHTML = "";
     if (pauseButton) pauseButton.textContent = "ステータス";
+    updateEndingImageForCharacter();
     resetEndingZoom();
     hideBossDefeatCutin();
     showEndingScreenElement(!!options.fade);
@@ -5092,6 +5106,7 @@
           recordsScreen?.classList.add("hidden");
           encyclopediaScreen?.classList.add("hidden");
           hideBossDefeatCutin();
+          updateEndingImageForCharacter();
           showEndingScreenElement(false);
         }
       }
