@@ -213,6 +213,7 @@
   let bossDefeatCutinOutStartedAt = 0;
   let bossDefeatCutinTimer = 0;
   let bossDefeatCutinOutTimer = 0;
+  let clearTransitionTimer = 0;
   let clearReason = "survive";
   let lastResult = null;
   let levelChoiceReadyAt = 0;
@@ -1876,6 +1877,10 @@
     bossDefeatCutinDelay = 0;
     bossDefeatCutinStartedAt = 0;
     bossDefeatCutinOutStartedAt = 0;
+    resetBossDefeatCutinClasses();
+  }
+
+  function resetBossDefeatCutinClasses() {
     for (const screen of [bossDefeatCutinScreen, bossUndefeatedCutinScreen]) {
       screen?.classList.add("hidden");
       screen?.classList.remove("active", "leaving");
@@ -1907,6 +1912,7 @@
     testScenario = options.scenario || (DEBUG_ENDGAME_TEST ? "endgame" : options.test ? "overlord" : "");
     testMode = !!testScenario || !!options.test;
     clearEndingFallbackTimer();
+    clearEndingTransitionTimer();
     stopEndingBgm();
     titleScreen.classList.add("hidden");
     gameOverScreen.classList.add("hidden");
@@ -3872,9 +3878,16 @@
     clearFallbackTimer = 0;
   }
 
+  function clearEndingTransitionTimer() {
+    if (!clearTransitionTimer) return;
+    clearTimeout(clearTransitionTimer);
+    clearTransitionTimer = 0;
+  }
+
   function forceEndingScreen(reason = clearReason) {
     state = "ending";
     clearEndingFallbackTimer();
+    clearEndingTransitionTimer();
     let reward = 0;
     try {
       if (!runRewarded) reward = grantRunReward(true, reason);
@@ -3903,6 +3916,7 @@
 
   function showEndingForClear(reason = "survive", options = {}) {
     clearEndingFallbackTimer();
+    clearEndingTransitionTimer();
     state = "ending";
     if (reason === "survive") elapsed = Math.max(elapsed, ENDING_TIME);
     let reward = 0;
@@ -3940,6 +3954,7 @@
 
   function showBossDefeatCutin(reason = "boss") {
     clearBossDefeatCutinTimers();
+    clearEndingTransitionTimer();
     state = "endingCutin";
     clearReason = reason;
     bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_TIME;
@@ -3964,7 +3979,7 @@
       showEndingForClear(reason, { fade: true });
       return;
     }
-    hideBossDefeatCutin();
+    resetBossDefeatCutinClasses();
     bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_TIME;
     bossDefeatCutinStartedAt = performance.now();
     cutinScreen.classList.remove("hidden", "active", "leaving");
@@ -4024,8 +4039,10 @@
     clearDelay = clearMaxDelay;
     purgeEnemiesForEnding();
     clearEndingFallbackTimer();
+    clearEndingTransitionTimer();
     const usesEndingCutin = reason === "boss" || reason === "survive";
     const fallbackDelay = clearMaxDelay + (usesEndingCutin ? BOSS_DEFEAT_CUTIN_TIME + BOSS_DEFEAT_CUTIN_EXIT_TIME + 1.2 : 0.55);
+    clearTransitionTimer = setTimeout(advanceClearToEnding, clearMaxDelay * 1000);
     clearFallbackTimer = setTimeout(() => {
       if (state !== "clearing" && state !== "endingCutin" && state !== "endingCutinOut") return;
       try {
@@ -4044,6 +4061,27 @@
       if (audio) audio.sfx("fury");
     } catch (error) {
       // Clear flow must continue even if a browser refuses an audio operation.
+    }
+  }
+
+  function advanceClearToEnding() {
+    if (state !== "clearing") return;
+    clearEndingTransitionTimer();
+    try {
+      if (clearReason === "boss" || clearReason === "survive") showBossDefeatCutin(clearReason);
+      else showEndingForClear(clearReason);
+    } catch (error) {
+      state = "ending";
+      pauseScreen?.classList.add("hidden");
+      levelScreen?.classList.add("hidden");
+      gameOverScreen?.classList.add("hidden");
+      titleScreen?.classList.add("hidden");
+      shopScreen?.classList.add("hidden");
+      recordsScreen?.classList.add("hidden");
+      encyclopediaScreen?.classList.add("hidden");
+      hideBossDefeatCutin();
+      updateEndingImageForCharacter();
+      showEndingScreenElement(false);
     }
   }
 
@@ -5233,22 +5271,7 @@
       });
       updateList(shockwaves, dt);
       if (clearDelay <= 0) {
-        try {
-          if (clearReason === "boss" || clearReason === "survive") showBossDefeatCutin(clearReason);
-          else showEndingForClear(clearReason);
-        } catch (error) {
-          state = "ending";
-          pauseScreen?.classList.add("hidden");
-          levelScreen?.classList.add("hidden");
-          gameOverScreen?.classList.add("hidden");
-          titleScreen?.classList.add("hidden");
-          shopScreen?.classList.add("hidden");
-          recordsScreen?.classList.add("hidden");
-          encyclopediaScreen?.classList.add("hidden");
-          hideBossDefeatCutin();
-          updateEndingImageForCharacter();
-          showEndingScreenElement(false);
-        }
+        advanceClearToEnding();
       }
       return;
     }
@@ -7303,7 +7326,14 @@
     } catch (error) {
       console.error("game loop recovered", error);
       frameCarry = 0;
-      if (state === "clearing") forceEndingScreen(clearReason);
+      if (state === "clearing") {
+        try {
+          if (clearReason === "boss" || clearReason === "survive") showBossDefeatCutin(clearReason);
+          else forceEndingScreen(clearReason);
+        } catch (endingError) {
+          forceEndingScreen(clearReason);
+        }
+      }
       else if (state === "endingCutin" || state === "endingCutinOut") {
         bossDefeatCutinDelay = Math.max(bossDefeatCutinDelay, 0.5);
         if (DEBUG_MODE) console.info("[ending-cutin:recover]", { state, reason: clearReason });
