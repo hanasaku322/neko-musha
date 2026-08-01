@@ -4533,7 +4533,7 @@
     shockwaves = [];
     particles = [];
     texts = [];
-    elapsed = Math.max(0, ENDING_TIME - 5);
+    elapsed = 4 * 60 + 55;
     score = 82000;
     kills = 420;
     bossTimer = 9999;
