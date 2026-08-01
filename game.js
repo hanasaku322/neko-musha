@@ -247,7 +247,7 @@
   const stageImage = new Image();
   stageImage.src = "assets/sengoku-stage.webp";
   const merchantImage = new Image();
-  merchantImage.src = "assets/characters/tanuki-merchant-sprite.webp";
+  merchantImage.src = "assets/characters/tanuki-merchant-cart-sheet.webp";
   const furyCutinImage = new Image();
   furyCutinImage.src = "assets/neko-fury-cutin.webp";
   const denkichiFuryCutinImage = new Image();
@@ -3006,7 +3006,7 @@
     merchantStock = rollMerchantStock();
     const zoom = getCameraZoom();
     const view = visibleWorldRect(0, zoom);
-    const sidePadding = 130 / zoom;
+    const sidePadding = 220 / zoom;
     const topPadding = 96 / zoom;
     const bottomPadding = 84 / zoom;
     const base = keepPointInMap(player.x, player.y + 110, 56);
@@ -3022,7 +3022,9 @@
       startedAt: elapsed,
       duration: MERCHANT_LIFETIME,
       facing: -1,
-      r: 52,
+      r: 68,
+      hitLeft: -54,
+      hitRight: 164,
       pulse: rand(0, TAU),
       touchLatched: false,
       expiresAt: elapsed + MERCHANT_LIFETIME
@@ -3041,9 +3043,11 @@
       merchant = null;
       return;
     }
-    const near = d2(merchant, player) < sqr(player.r + merchant.r + 12);
+    const hitX = clamp(player.x, merchant.x + merchant.hitLeft, merchant.x + merchant.hitRight);
+    const hitY = merchant.y + 6;
+    const near = sqr(player.x - hitX) + sqr(player.y - hitY) < sqr(player.r + 38);
     if (merchant.touchLatched) {
-      if (!near && d2(merchant, player) > sqr(player.r + merchant.r + 42)) merchant.touchLatched = false;
+      if (!near && sqr(player.x - hitX) + sqr(player.y - hitY) > sqr(player.r + 74)) merchant.touchLatched = false;
       return;
     }
     if (near) openMerchantShop();
@@ -7417,59 +7421,33 @@
 
   function drawMerchant() {
     if (!merchant) return;
-    const step = Math.sin(elapsed * 9 + merchant.pulse);
-    const bob = step * 2.4;
-    const dir = merchant.facing || -1;
-    const behind = -dir;
+    const walkFrame = Math.floor(((elapsed - merchant.startedAt) * 7.2) % 4);
     ctx.save();
     ctx.translate(merchant.x, merchant.y);
     ctx.shadowColor = "#ffbd72";
     ctx.shadowBlur = performanceGlow(18);
     ctx.fillStyle = "rgba(5, 4, 5, 0.58)";
     ctx.beginPath();
-    ctx.ellipse(behind * 26, 27, 78, 17, 0, 0, TAU);
+    ctx.ellipse(64, 30, 126, 18, 0, 0, TAU);
     ctx.fill();
 
-    ctx.save();
-    ctx.translate(behind * 58, -14);
-    ctx.strokeStyle = "rgba(255, 224, 122, 0.82)";
-    ctx.lineWidth = 4;
-    ctx.lineCap = "round";
-    ctx.beginPath();
-    ctx.moveTo(-behind * 42, 4);
-    ctx.lineTo(-behind * 78, 17 + step * 1.5);
-    ctx.stroke();
-    ctx.fillStyle = "rgba(62, 34, 20, 0.96)";
-    ctx.strokeStyle = "rgba(255, 205, 104, 0.76)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(-38, -22, 76, 36, 6);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = "rgba(255, 214, 120, 0.22)";
-    ctx.fillRect(-30, -14, 60, 7);
-    ctx.fillStyle = "#2b1710";
-    ctx.strokeStyle = "#d29a52";
-    for (const wx of [-24, 24]) {
-      ctx.beginPath();
-      ctx.arc(wx, 17, 12, 0, TAU);
-      ctx.fill();
-      ctx.stroke();
-      ctx.strokeStyle = "rgba(255, 231, 150, 0.55)";
-      ctx.beginPath();
-      ctx.moveTo(wx - 8, 17);
-      ctx.lineTo(wx + 8, 17);
-      ctx.moveTo(wx, 9);
-      ctx.lineTo(wx, 25);
-      ctx.stroke();
-      ctx.strokeStyle = "#d29a52";
-    }
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(0, bob);
     if (merchantImage.complete && merchantImage.naturalWidth) {
-      ctx.drawImage(merchantImage, -43, -98, 86, 106);
+      const frames = 4;
+      const frameW = merchantImage.naturalWidth / frames;
+      const frameH = merchantImage.naturalHeight;
+      const drawW = 236;
+      const drawH = drawW * frameH / frameW;
+      ctx.drawImage(
+        merchantImage,
+        frameW * walkFrame,
+        0,
+        frameW,
+        frameH,
+        -62,
+        -drawH + 35,
+        drawW,
+        drawH
+      );
     } else {
       ctx.fillStyle = "#b87943";
       ctx.beginPath();
@@ -7480,7 +7458,6 @@
       ctx.textAlign = "center";
       ctx.fillText("商", 0, -14);
     }
-    ctx.restore();
     ctx.shadowBlur = 0;
     ctx.fillStyle = "rgba(10, 6, 5, 0.82)";
     ctx.strokeStyle = "rgba(255, 224, 122, 0.7)";
