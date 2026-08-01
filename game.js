@@ -3420,25 +3420,9 @@
     upgradeChoices.classList.add("slot-grid", "slot-sequential");
     upgradeChoices.innerHTML = "";
 
-    const upgradeCandidates = itemDefs.filter(canUpgradeOwnedItem);
-    const freshCandidates = [];
-    if (options.allowFresh) {
-      const freshSlots = {
-        active: Math.max(0, ACTIVE_LIMIT - itemTypeCount("active")),
-        passive: Math.max(0, PASSIVE_LIMIT - itemTypeCount("passive"))
-      };
-      itemDefs
-        .filter(def => canReceiveItem(def) && !acquiredItems.has(def))
-        .sort(() => Math.random() - 0.5)
-        .forEach(def => {
-          if (freshSlots[def.type] <= 0) return;
-          freshCandidates.push(def);
-          freshSlots[def.type]--;
-        });
-    }
-    const candidateMap = new Map();
-    [...upgradeCandidates, ...freshCandidates].forEach(def => candidateMap.set(def.id, def));
-    const candidates = [...candidateMap.values()].sort(() => Math.random() - 0.5);
+    const candidates = itemDefs
+      .filter(canUpgradeOwnedItem)
+      .sort(() => Math.random() - 0.5);
     if (candidates.length < 3) {
       pauseForLevel();
       return;
@@ -3460,8 +3444,6 @@
         source: options.source || "level",
         tier: options.tier || "-",
         baseCount,
-        upgradeCandidates: upgradeCandidates.length,
-        freshCandidates: freshCandidates.length,
         winners: winners.length,
         eightCutinEligible,
         eightCutinChance,
