@@ -228,6 +228,7 @@
   let pauseReturnState = "playing";
   let maxedFallbackCount = 0;
   let lastJackpotAt = -999;
+  let jackpotEightCutinMisses = 0;
   let merchant = null;
   let merchantSpawned = false;
   let merchantStock = [];
@@ -1450,6 +1451,7 @@
     openedChestCount = 0;
     maxedFallbackCount = 0;
     lastJackpotAt = -999;
+    jackpotEightCutinMisses = 0;
     overlordSpawned = false;
     clearDelay = 0;
     clearMaxDelay = CLEAR_TRANSITION_TIME;
@@ -3418,9 +3420,25 @@
     upgradeChoices.classList.add("slot-grid", "slot-sequential");
     upgradeChoices.innerHTML = "";
 
-    const candidates = itemDefs
-      .filter(canUpgradeOwnedItem)
-      .sort(() => Math.random() - 0.5);
+    const upgradeCandidates = itemDefs.filter(canUpgradeOwnedItem);
+    const freshCandidates = [];
+    if (options.allowFresh) {
+      const freshSlots = {
+        active: Math.max(0, ACTIVE_LIMIT - itemTypeCount("active")),
+        passive: Math.max(0, PASSIVE_LIMIT - itemTypeCount("passive"))
+      };
+      itemDefs
+        .filter(def => canReceiveItem(def) && !acquiredItems.has(def))
+        .sort(() => Math.random() - 0.5)
+        .forEach(def => {
+          if (freshSlots[def.type] <= 0) return;
+          freshCandidates.push(def);
+          freshSlots[def.type]--;
+        });
+    }
+    const candidateMap = new Map();
+    [...upgradeCandidates, ...freshCandidates].forEach(def => candidateMap.set(def.id, def));
+    const candidates = [...candidateMap.values()].sort(() => Math.random() - 0.5);
     if (candidates.length < 3) {
       pauseForLevel();
       return;
@@ -3433,13 +3451,21 @@
     let targetCount = baseCount;
     let reelIndex = 0;
     let ready = false;
-    const cutinAvailable = baseCount >= 5 && winners.length >= 8 && chance(0.52 + player.luck * 0.24);
+    const eightCutinEligible = baseCount >= 5 && winners.length >= 8;
+    const eightCutinChance = clamp((options.source === "chest" ? 0.62 : 0.52) + player.luck * 0.24, 0, 0.86);
+    const cutinAvailable = eightCutinEligible && (jackpotEightCutinMisses >= 3 || chance(eightCutinChance));
+    if (eightCutinEligible) jackpotEightCutinMisses = cutinAvailable ? 0 : jackpotEightCutinMisses + 1;
     if (DEBUG_MODE) {
       console.info("[猫箱大当たり]", {
         source: options.source || "level",
         tier: options.tier || "-",
         baseCount,
+        upgradeCandidates: upgradeCandidates.length,
+        freshCandidates: freshCandidates.length,
         winners: winners.length,
+        eightCutinEligible,
+        eightCutinChance,
+        eightCutinMisses: jackpotEightCutinMisses,
         cutinAvailable
       });
     }
