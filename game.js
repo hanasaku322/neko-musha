@@ -5302,7 +5302,7 @@
     }
     if (state !== "playing") return;
     elapsed += dt;
-    if (!testMode && elapsed >= ENDING_TIME) {
+    if (elapsed >= ENDING_TIME) {
       beginClear("survive");
       return;
     }
