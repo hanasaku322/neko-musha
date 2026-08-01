@@ -88,7 +88,9 @@
   const SAVE_KEY = "nekoMushaSave.v1";
   const SAVE_SLOT_COUNT = 2;
   const ACTIVE_SAVE_SLOT_KEY = "nekoMushaActiveSlot.v1";
-  const DEBUG_MODE = new URLSearchParams(window.location.search).has("debug");
+  const URL_PARAMS = new URLSearchParams(window.location.search);
+  const DEBUG_MODE = URL_PARAMS.has("debug");
+  const DEBUG_ENDGAME_TEST = DEBUG_MODE && URL_PARAMS.has("endgameTest");
 
   const rand = (min, max) => min + Math.random() * (max - min);
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -219,6 +221,7 @@
   let lastJackpotAt = -999;
   let overlordSpawned = false;
   let testMode = false;
+  let testScenario = "";
   let clearFallbackTimer = 0;
 
   const itemAtlas = new Image();
@@ -1903,7 +1906,8 @@
   }
 
   function startGame(options = {}) {
-    testMode = !!options.test;
+    testScenario = options.scenario || (DEBUG_ENDGAME_TEST ? "endgame" : options.test ? "overlord" : "");
+    testMode = !!testScenario || !!options.test;
     clearEndingFallbackTimer();
     stopEndingBgm();
     titleScreen.classList.add("hidden");
@@ -1918,7 +1922,8 @@
     pauseButton.textContent = "ステータス";
     pauseReturnState = "playing";
     resetGame();
-    if (testMode) spawnTestOverlord();
+    if (testScenario === "overlord") spawnTestOverlord();
+    else if (testScenario === "endgame") setupEndgameTest();
     state = "playing";
     if (!audio) audio = makeAudio();
     if (audio) audio.start();
@@ -4166,6 +4171,55 @@
     updateHud();
   }
 
+  function setupEndgameTest() {
+    elapsed = Math.max(0, OVERLORD_START_TIME - 5);
+    score = 82000;
+    kills = 420;
+    bossTimer = 6;
+    spawnTimer = 0.25;
+    fieldPickupTimer = 4;
+    thiefTimer = 9999;
+    nextSupplyDropAt = ENDGAME_TIME;
+    overlordSpawned = false;
+    grantTestLoadout();
+    const boostLoadout = [
+      ["sake", 7],
+      ["arrow", 7],
+      ["smoke", 5],
+      ["sickle", 6],
+      ["banner", 5],
+      ["lantern", 6],
+      ["sutra", 5]
+    ];
+    for (const [id, targetLevel] of boostLoadout) {
+      const def = findItemDef(id);
+      if (!def) continue;
+      const current = acquiredItems.get(def.id) || 0;
+      const max = Math.min(itemMaxLevel(def), targetLevel);
+      for (let level = current + 1; level <= max; level++) {
+        acquiredItems.set(def.id, level);
+        def.apply(level);
+      }
+    }
+    player.level = Math.max(player.level, 28);
+    player.need = Math.max(player.need, 46);
+    player.hp = player.maxHp;
+    player.invuln = 9999;
+    player.damage = Math.max(player.damage, 92);
+    player.fireRate = Math.min(player.fireRate, 0.5);
+    player.might = Math.max(player.might, 1.95);
+    player.projectileSpeed = Math.max(player.projectileSpeed, 1.3);
+    player.shotLanes = Math.max(player.shotLanes, 3);
+    player.rapidShots = Math.max(player.rapidShots, 4);
+    player.area = Math.max(player.area, 1.08);
+    spawnFixedChests();
+    for (let i = 0; i < 56; i++) spawnEnemy(true);
+    reinforceEnemiesForScaling();
+    renderItemDock();
+    showToast({ sprite: 11 }, "終盤テスト: 9分55秒 無敵強化");
+    updateHud();
+  }
+
   function getOverlordTargetCount() {
     if (elapsed < OVERLORD_START_TIME || overlordSpawned) return 0;
     return 1;
@@ -5215,7 +5269,7 @@
     fieldPickupTimer -= dt;
     thiefTimer -= dt;
 
-    if (testMode) {
+    if (testMode && testScenario !== "endgame") {
       movePlayer(dt);
       updateEnemies(dt);
       updateEnemyBullets(dt);
@@ -7531,6 +7585,7 @@
     touchStick.addEventListener("pointercancel", releaseTouchStick);
   }
   startButton.addEventListener("click", startGame);
+  if (DEBUG_ENDGAME_TEST) startButton.textContent = "終盤テスト";
   shopButton.addEventListener("click", openShop);
   recordsButton.addEventListener("click", openRecords);
   encyclopediaButton.addEventListener("click", openEncyclopedia);
