@@ -4218,7 +4218,7 @@
     shockwaves = [];
     particles = [];
     texts = [];
-    elapsed = Math.max(0, OVERLORD_START_TIME - 5);
+    elapsed = Math.max(0, ENDING_TIME - 5);
     score = 82000;
     kills = 420;
     bossTimer = 9999;
@@ -4281,7 +4281,7 @@
     });
     showEnemyIntro("overlord");
     renderItemDock();
-    showToast({ sprite: 11 }, "終盤テスト: ボス即戦 無敵強化");
+    showToast({ sprite: 11 }, "終盤テスト: 14分55秒 ボス即戦");
     updateHud();
   }
 
