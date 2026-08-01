@@ -4466,6 +4466,7 @@
   }
 
   function spawnTestOverlord() {
+    const hp = 8800 * 3;
     enemies = [];
     projectiles = [];
     enemyBullets = [];
@@ -4503,8 +4504,8 @@
       y: player.y + 40,
       vx: 0,
       vy: 0,
-      hp: 8800,
-      maxHp: 8800,
+      hp,
+      maxHp: hp,
       levelHpMul: 1,
       speed: 46,
       r: 76,
@@ -4523,6 +4524,7 @@
   }
 
   function setupEndgameTest() {
+    const hp = 7600 * 3;
     enemies = [];
     projectiles = [];
     enemyBullets = [];
@@ -4579,8 +4581,8 @@
       y: player.y + 40,
       vx: 0,
       vy: 0,
-      hp: 7600,
-      maxHp: 7600,
+      hp,
+      maxHp: hp,
       levelHpMul: 1,
       speed: 46,
       r: 76,
@@ -4596,7 +4598,7 @@
     });
     showEnemyIntro("overlord");
     renderItemDock();
-    showToast({ sprite: 11 }, "終盤テスト: 14分55秒 ボス即戦");
+    showToast({ sprite: 11 }, "終盤テスト: 4分55秒 ボス即戦");
     updateHud();
   }
 
@@ -5636,7 +5638,9 @@
     thiefTimer -= dt;
 
     if (testMode) {
+      if (!merchantSpawned && elapsed >= MERCHANT_START_TIME) spawnMerchant();
       movePlayer(dt);
+      updateMerchant(dt);
       updateEnemies(dt);
       updateEnemyBullets(dt);
       updateCombat(dt);
