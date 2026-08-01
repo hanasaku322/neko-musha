@@ -221,6 +221,7 @@
   let bossDefeatCutinTimer = 0;
   let bossDefeatCutinOutTimer = 0;
   let clearTransitionTimer = 0;
+  let endingBgmRetryTimer = 0;
   let clearReason = "survive";
   let clearCharacter = "piimaru";
   let lastResult = null;
@@ -1883,17 +1884,48 @@
 
   function playEndingBgm() {
     if (!endingBgmTrack) return;
+    if (endingBgmRetryTimer) {
+      clearTimeout(endingBgmRetryTimer);
+      endingBgmRetryTimer = 0;
+    }
+    let attempts = 0;
+    const tryPlay = () => {
+      if (state !== "ending" || !endingBgmTrack) return;
+      attempts++;
+      try {
+        endingBgmTrack.volume = 0.48;
+        if (endingBgmTrack.readyState === 0) endingBgmTrack.load();
+        if (endingBgmTrack.currentTime === 0 || endingBgmTrack.ended) endingBgmTrack.currentTime = 0;
+        const playPromise = endingBgmTrack.play();
+        if (playPromise && typeof playPromise.catch === "function") {
+          playPromise.catch(error => {
+            if (DEBUG_MODE) console.info("[ending-bgm:retry]", { attempts, error: error?.name || String(error) });
+            if (attempts < 6 && state === "ending") endingBgmRetryTimer = setTimeout(tryPlay, 420);
+          });
+        }
+        endingBgmRetryTimer = setTimeout(() => {
+          endingBgmRetryTimer = 0;
+          if (state === "ending" && endingBgmTrack.paused && attempts < 6) tryPlay();
+        }, 520);
+      } catch (error) {
+        if (DEBUG_MODE) console.info("[ending-bgm:error]", { attempts, error: error?.name || String(error) });
+        if (attempts < 6 && state === "ending") endingBgmRetryTimer = setTimeout(tryPlay, 420);
+      }
+    };
     try {
-      endingBgmTrack.volume = 0.48;
       endingBgmTrack.currentTime = 0;
-      endingBgmTrack.play().catch(() => {});
     } catch (error) {
       // Ending should never be blocked by audio seek/play failures on mobile browsers.
     }
+    tryPlay();
   }
 
   function stopEndingBgm() {
     if (!endingBgmTrack) return;
+    if (endingBgmRetryTimer) {
+      clearTimeout(endingBgmRetryTimer);
+      endingBgmRetryTimer = 0;
+    }
     try {
       endingBgmTrack.pause();
       endingBgmTrack.currentTime = 0;
