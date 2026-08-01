@@ -3004,11 +3004,25 @@
     merchantSpawned = true;
     merchantBoughtItemIds = new Set();
     merchantStock = rollMerchantStock();
-    const base = keepPointInMap(player.x + 250, player.y - 80, 56);
+    const zoom = getCameraZoom();
+    const view = visibleWorldRect(0, zoom);
+    const sidePadding = 130 / zoom;
+    const topPadding = 96 / zoom;
+    const bottomPadding = 84 / zoom;
+    const base = keepPointInMap(player.x, player.y + 110, 56);
+    const routeY = clamp(base.y, view.y + topPadding, view.y + view.h - bottomPadding);
+    const startX = view.x + view.w + sidePadding;
+    const endX = view.x - sidePadding;
     merchant = {
-      x: base.x,
-      y: base.y,
-      r: 46,
+      x: startX,
+      y: routeY,
+      startX,
+      endX,
+      baseY: routeY,
+      startedAt: elapsed,
+      duration: MERCHANT_LIFETIME,
+      facing: -1,
+      r: 52,
       pulse: rand(0, TAU),
       touchLatched: false,
       expiresAt: elapsed + MERCHANT_LIFETIME
@@ -3020,6 +3034,9 @@
   function updateMerchant(dt) {
     if (!merchant) return;
     merchant.pulse += dt;
+    const t = clamp((elapsed - merchant.startedAt) / Math.max(0.1, merchant.duration), 0, 1);
+    merchant.x = merchant.startX + (merchant.endX - merchant.startX) * t;
+    merchant.y = merchant.baseY + Math.sin(t * TAU * 2 + merchant.pulse) * 5;
     if (elapsed >= merchant.expiresAt) {
       merchant = null;
       return;
@@ -7400,40 +7417,83 @@
 
   function drawMerchant() {
     if (!merchant) return;
-    const bob = Math.sin(elapsed * 4 + merchant.pulse) * 4;
+    const step = Math.sin(elapsed * 9 + merchant.pulse);
+    const bob = step * 2.4;
+    const dir = merchant.facing || -1;
+    const behind = -dir;
     ctx.save();
-    ctx.translate(merchant.x, merchant.y + bob);
+    ctx.translate(merchant.x, merchant.y);
     ctx.shadowColor = "#ffbd72";
     ctx.shadowBlur = performanceGlow(18);
     ctx.fillStyle = "rgba(5, 4, 5, 0.58)";
     ctx.beginPath();
-    ctx.ellipse(0, 43, 44, 14, 0, 0, TAU);
+    ctx.ellipse(behind * 26, 27, 78, 17, 0, 0, TAU);
     ctx.fill();
+
+    ctx.save();
+    ctx.translate(behind * 58, -14);
+    ctx.strokeStyle = "rgba(255, 224, 122, 0.82)";
+    ctx.lineWidth = 4;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(-behind * 42, 4);
+    ctx.lineTo(-behind * 78, 17 + step * 1.5);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(62, 34, 20, 0.96)";
+    ctx.strokeStyle = "rgba(255, 205, 104, 0.76)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(-38, -22, 76, 36, 6);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255, 214, 120, 0.22)";
+    ctx.fillRect(-30, -14, 60, 7);
+    ctx.fillStyle = "#2b1710";
+    ctx.strokeStyle = "#d29a52";
+    for (const wx of [-24, 24]) {
+      ctx.beginPath();
+      ctx.arc(wx, 17, 12, 0, TAU);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "rgba(255, 231, 150, 0.55)";
+      ctx.beginPath();
+      ctx.moveTo(wx - 8, 17);
+      ctx.lineTo(wx + 8, 17);
+      ctx.moveTo(wx, 9);
+      ctx.lineTo(wx, 25);
+      ctx.stroke();
+      ctx.strokeStyle = "#d29a52";
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.translate(0, bob);
     if (merchantImage.complete && merchantImage.naturalWidth) {
-      ctx.drawImage(merchantImage, -43, -108, 86, 114);
+      ctx.drawImage(merchantImage, -43, -98, 86, 106);
     } else {
       ctx.fillStyle = "#b87943";
       ctx.beginPath();
-      ctx.roundRect(-34, -76, 68, 82, 8);
+      ctx.roundRect(-34, -74, 68, 82, 8);
       ctx.fill();
       ctx.fillStyle = "#ffe6a2";
       ctx.font = "900 24px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText("商", 0, -14);
     }
+    ctx.restore();
     ctx.shadowBlur = 0;
     ctx.fillStyle = "rgba(10, 6, 5, 0.82)";
     ctx.strokeStyle = "rgba(255, 224, 122, 0.7)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(-42, 16, 84, 24, 7);
+    ctx.roundRect(-42, -124, 84, 24, 7);
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = "#ffe98a";
     ctx.font = "900 14px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("たぬき商店", 0, 28);
+    ctx.fillText("たぬき商店", 0, -112);
     ctx.restore();
   }
 
