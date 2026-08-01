@@ -4170,15 +4170,25 @@
   }
 
   function setupEndgameTest() {
+    enemies = [];
+    projectiles = [];
+    enemyBullets = [];
+    gems = [];
+    pickups = [];
+    slashes = [];
+    puddles = [];
+    shockwaves = [];
+    particles = [];
+    texts = [];
     elapsed = Math.max(0, OVERLORD_START_TIME - 5);
     score = 82000;
     kills = 420;
-    bossTimer = 6;
-    spawnTimer = 0.25;
-    fieldPickupTimer = 4;
+    bossTimer = 9999;
+    spawnTimer = 9999;
+    fieldPickupTimer = 9999;
     thiefTimer = 9999;
     nextSupplyDropAt = ENDGAME_TIME;
-    overlordSpawned = false;
+    overlordSpawned = true;
     grantTestLoadout();
     const boostLoadout = [
       ["sake", 7],
@@ -4210,11 +4220,30 @@
     player.shotLanes = Math.max(player.shotLanes, 3);
     player.rapidShots = Math.max(player.rapidShots, 4);
     player.area = Math.max(player.area, 1.08);
-    spawnFixedChests();
-    for (let i = 0; i < 56; i++) spawnEnemy(true);
-    reinforceEnemiesForScaling();
+    enemies.push({
+      type: "overlord",
+      x: player.x + 360,
+      y: player.y + 40,
+      vx: 0,
+      vy: 0,
+      hp: 7600,
+      maxHp: 7600,
+      levelHpMul: 1,
+      speed: 46,
+      r: 76,
+      value: 48,
+      color: "#ff2438",
+      sprite: "boss",
+      spriteKey: "overlord",
+      hit: 0,
+      dashCd: 1.8,
+      shootCd: 2.2,
+      slow: 0,
+      phase: rand(0, TAU)
+    });
+    showEnemyIntro("overlord");
     renderItemDock();
-    showToast({ sprite: 11 }, "終盤テスト: 9分55秒 無敵強化");
+    showToast({ sprite: 11 }, "終盤テスト: ボス即戦 無敵強化");
     updateHud();
   }
 
@@ -5260,12 +5289,14 @@
     fieldPickupTimer -= dt;
     thiefTimer -= dt;
 
-    if (testMode && testScenario !== "endgame") {
+    if (testMode) {
       movePlayer(dt);
       updateEnemies(dt);
       updateEnemyBullets(dt);
       updateCombat(dt);
       updatePuddles(dt);
+      updateGems(dt);
+      updatePickups(dt);
       updateList(particles, dt, item => {
         item.x += item.vx * dt;
         item.y += item.vy * dt;
