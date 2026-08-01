@@ -436,6 +436,7 @@
       bestKills: 0,
       bestLevel: 1,
       bestReward: 0,
+      denkichiClears: 0,
       totalEarned: 0,
       totalScore: 0,
       totalKills: 0
@@ -456,6 +457,7 @@
       upgrades: {},
       selectedCharacter: "piimaru",
       unlockedCharacters: ["piimaru"],
+      denkichiCleared: false,
       stats: defaultStats()
     };
   }
@@ -487,6 +489,7 @@
         upgrades: { ...(parsed.upgrades || {}) },
         selectedCharacter: selected,
         unlockedCharacters: [...new Set(unlocked)],
+        denkichiCleared: Boolean(parsed.denkichiCleared || Number(parsed.stats?.denkichiClears) > 0),
         stats: normalizeStats(parsed.stats || fallback.stats)
       };
     } catch (error) {
@@ -1158,15 +1161,15 @@
     { type: "image", group: "舞台", name: "武器屋", src: "assets/shop-neko-musha.webp", desc: "出陣前に力を整える武器屋。" },
     { type: "image", group: "舞台", name: "戦績", src: "assets/records-neko-musha.webp", desc: "これまでの戦いを刻む戦績画面。" },
     { type: "image", group: "物語", name: "エンディング", src: "assets/ending-neko-musha.webp", desc: "夜を越えた者だけが見られる結末。" },
-    { type: "image", group: "物語", name: "伝吉エンディング", src: "assets/ending-denkichi.jpg", desc: "伝吉で夜を越えた時の結末。" },
+    { type: "image", group: "物語", name: "伝吉エンディング", src: "assets/ending-denkichi.jpg", desc: "伝吉で夜を越えた時の結末。", secret: "denkichiClear" },
     { type: "image", group: "演出", name: "猫神奥義札", src: "assets/neko-fury-cutin.webp", desc: "ぴぃ丸の奥義発動カットイン。" },
     { type: "image", group: "演出", name: "宝物発見", src: "assets/jackpot-treasure-cutin.webp", desc: "猫箱大当たりのカットイン。" },
-    { type: "image", group: "演出", name: "伝吉奥義札", src: "assets/denkichi-fury-cutin.webp", desc: "伝吉の奥義発動カットイン。" },
-    { type: "image", group: "演出", name: "伝吉登場", src: "assets/denkichi-jackpot-cutin.webp", desc: "伝吉の大当たりカットイン。" },
-    { type: "image", group: "演出", name: "伝吉 黒角王討伐", src: "assets/denkichi-boss-defeat-cutin.webp", desc: "伝吉で終焉の黒角王を倒した時のカットイン。" },
-    { type: "image", group: "演出", name: "伝吉 黒角王未討伐", src: "assets/denkichi-undefeated-cutin.webp", desc: "伝吉で終焉の黒角王を倒せなかった時のカットイン。" },
+    { type: "image", group: "演出", name: "伝吉奥義札", src: "assets/denkichi-fury-cutin.webp", desc: "伝吉の奥義発動カットイン。", secret: "denkichiClear" },
+    { type: "image", group: "演出", name: "伝吉登場", src: "assets/denkichi-jackpot-cutin.webp", desc: "伝吉の大当たりカットイン。", secret: "denkichiClear" },
+    { type: "image", group: "演出", name: "伝吉 黒角王討伐", src: "assets/denkichi-boss-defeat-cutin.webp", desc: "伝吉で終焉の黒角王を倒した時のカットイン。", secret: "denkichiClear" },
+    { type: "image", group: "演出", name: "伝吉 黒角王未討伐", src: "assets/denkichi-undefeated-cutin.webp", desc: "伝吉で終焉の黒角王を倒せなかった時のカットイン。", secret: "denkichiClear" },
     { type: "image", group: "キャラ", name: "ぴぃ丸", src: "assets/characters/hero-samurai.png", desc: "隻眼の猫武者。" },
-    { type: "image", group: "キャラ", name: "伝吉", src: "assets/characters/denkichi.png", desc: "クリア後に選べる剣士。" },
+    { type: "image", group: "キャラ", name: "伝吉", src: "assets/characters/denkichi.png", desc: "クリア後に選べる剣士。", secret: "denkichiClear" },
     { type: "image", group: "キャラ", name: "終焉の黒角王", src: "assets/characters/overlord.png", desc: "夜の果てに待つ最終ボス。" },
     { type: "audio", group: "BGM", name: "戦場曲", songTitle: "欠けた月の下で", src: "assets/bgm/field-theme.mp3", desc: "プレイフィールドで流れる曲。" },
     { type: "audio", group: "BGM", name: "エンディング曲", songTitle: "片月のうた", src: "assets/bgm/ending-theme.mp3", desc: "エンディングで流れる曲。" }
@@ -2189,6 +2192,14 @@
     return (Number(metaSave?.stats?.wins) || 0) > 0;
   }
 
+  function hasClearedWithDenkichi() {
+    return Boolean(metaSave?.denkichiCleared) || (Number(metaSave?.stats?.denkichiClears) || 0) > 0;
+  }
+
+  function isArchiveAssetSecret(asset) {
+    return asset?.secret === "denkichiClear" && !hasClearedWithDenkichi();
+  }
+
   function encyclopediaEnemyCard(enemy) {
     const lockedOverlord = enemy.id === "overlord" && !hasClearedGame();
     const src = characterSpritePaths[enemy.id] || characterSpritePaths.wraith;
@@ -2208,18 +2219,27 @@
 
   function encyclopediaArchiveCard(asset) {
     const isAudio = asset.type === "audio";
+    const locked = isArchiveAssetSecret(asset);
+    const group = locked ? "シークレット" : asset.group;
+    const name = locked ? "？？？" : asset.name;
     return `
-      <article class="encyclopedia-card encyclopedia-archive-card ${isAudio ? "archive-audio-card" : ""}" style="--accent:${isAudio ? "#58f3e4" : "#ffdf5a"}">
+      <article class="encyclopedia-card encyclopedia-archive-card ${isAudio ? "archive-audio-card" : ""} ${locked ? "archive-secret-card" : ""}" style="--accent:${locked ? "#8c7b66" : isAudio ? "#58f3e4" : "#ffdf5a"}">
         <div class="encyclopedia-art">
-          ${isAudio
+          ${locked
+            ? `<div class="encyclopedia-secret-mark">?</div>`
+            : isAudio
             ? `<div class="encyclopedia-audio-mark">♪</div>`
             : `<img class="encyclopedia-archive-img" src="${asset.src}" alt="${asset.name}" loading="lazy">`}
         </div>
         <div class="encyclopedia-copy">
-          <span class="encyclopedia-type">${asset.group}</span>
-          <h3>${asset.name}</h3>
-          ${isAudio && asset.songTitle ? `<p class="archive-track-title">曲名：${asset.songTitle}</p>` : ""}
-          ${isAudio ? `<button class="archive-audio-button" type="button" data-archive-audio="${asset.src}">再生</button><audio class="archive-audio-source" preload="none" src="${asset.src}"></audio>` : `<p>${asset.desc}</p><button class="archive-link" type="button" data-archive-image="${asset.src}" data-archive-name="${asset.name}">画像を開く</button>`}
+          <span class="encyclopedia-type">${group}</span>
+          <h3>${name}</h3>
+          ${locked
+            ? `<p>伝吉でクリアすると解放されます。</p>`
+            : isAudio && asset.songTitle ? `<p class="archive-track-title">曲名：${asset.songTitle}</p>` : ""}
+          ${locked
+            ? ""
+            : isAudio ? `<button class="archive-audio-button" type="button" data-archive-audio="${asset.src}">再生</button><audio class="archive-audio-source" preload="none" src="${asset.src}"></audio>` : `<p>${asset.desc}</p><button class="archive-link" type="button" data-archive-image="${asset.src}" data-archive-name="${asset.name}">画像を開く</button>`}
         </div>
       </article>
     `;
@@ -2632,6 +2652,12 @@
     metaSave.stats.totalScore = (Number(metaSave.stats.totalScore) || 0) + Math.floor(score);
     metaSave.stats.totalKills = (Number(metaSave.stats.totalKills) || 0) + Math.floor(kills);
     if (win && unlockCharacter("denkichi")) runUnlocks.push("伝吉 解放");
+    if (win && player.character === "denkichi") {
+      const firstDenkichiClear = !hasClearedWithDenkichi();
+      metaSave.denkichiCleared = true;
+      metaSave.stats.denkichiClears = (Number(metaSave.stats.denkichiClears) || 0) + 1;
+      if (firstDenkichiClear) runUnlocks.push("伝吉資料 解放");
+    }
     saveMeta();
     updateTitleMoney();
     renderSaveSlots();
