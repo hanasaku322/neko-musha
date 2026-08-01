@@ -1177,6 +1177,7 @@
     { type: "image", group: "舞台", name: "タイトル絵", src: "assets/title-neko-musha.webp", desc: "猫武者の旅立ちを飾る一枚。" },
     { type: "image", group: "舞台", name: "戦国の夜", src: "assets/sengoku-stage.webp", desc: "妖気が漂う戦場背景。" },
     { type: "image", group: "舞台", name: "武器屋", src: "assets/shop-neko-musha.webp", desc: "出陣前に力を整える武器屋。" },
+    { type: "image", group: "舞台", name: "たぬき商店", src: "assets/characters/tanuki-merchant.webp", desc: "戦場に現れる商人の店先。" },
     { type: "image", group: "舞台", name: "戦績", src: "assets/records-neko-musha.webp", desc: "これまでの戦いを刻む戦績画面。" },
     { type: "image", group: "物語", name: "エンディング", src: "assets/ending-neko-musha.webp", desc: "夜を越えた者だけが見られる結末。" },
     { type: "image", group: "物語", name: "伝吉エンディング", src: "assets/ending-denkichi.jpg", desc: "伝吉で夜を越えた時の結末。", secret: "denkichiClear" },
