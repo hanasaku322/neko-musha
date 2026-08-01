@@ -209,6 +209,8 @@
   let bossDefeatCutinDelay = 0;
   let bossDefeatCutinStartedAt = 0;
   let bossDefeatCutinOutStartedAt = 0;
+  let bossDefeatCutinTimer = 0;
+  let bossDefeatCutinOutTimer = 0;
   let clearReason = "survive";
   let lastResult = null;
   let levelChoiceReadyAt = 0;
@@ -1869,12 +1871,24 @@
   }
 
   function hideBossDefeatCutin() {
+    clearBossDefeatCutinTimers();
     bossDefeatCutinDelay = 0;
     bossDefeatCutinStartedAt = 0;
     bossDefeatCutinOutStartedAt = 0;
     for (const screen of [bossDefeatCutinScreen, bossUndefeatedCutinScreen]) {
       screen?.classList.add("hidden");
       screen?.classList.remove("active", "leaving");
+    }
+  }
+
+  function clearBossDefeatCutinTimers() {
+    if (bossDefeatCutinTimer) {
+      clearTimeout(bossDefeatCutinTimer);
+      bossDefeatCutinTimer = 0;
+    }
+    if (bossDefeatCutinOutTimer) {
+      clearTimeout(bossDefeatCutinOutTimer);
+      bossDefeatCutinOutTimer = 0;
     }
   }
 
@@ -3922,6 +3936,7 @@
   }
 
   function showBossDefeatCutin(reason = "boss") {
+    clearBossDefeatCutinTimers();
     state = "endingCutin";
     clearReason = reason;
     bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_TIME;
@@ -3952,7 +3967,36 @@
     cutinScreen.classList.remove("hidden", "active", "leaving");
     void cutinScreen.offsetWidth;
     cutinScreen.classList.add("active");
+    bossDefeatCutinTimer = setTimeout(startBossDefeatCutinOut, BOSS_DEFEAT_CUTIN_TIME * 1000);
     if (DEBUG_MODE) console.info("[ending-cutin:start]", { reason, seconds: BOSS_DEFEAT_CUTIN_TIME });
+  }
+
+  function startBossDefeatCutinOut() {
+    if (state !== "endingCutin") return;
+    if (bossDefeatCutinTimer) {
+      clearTimeout(bossDefeatCutinTimer);
+      bossDefeatCutinTimer = 0;
+    }
+    bossDefeatCutinScreen?.classList.add("leaving");
+    bossUndefeatedCutinScreen?.classList.add("leaving");
+    state = "endingCutinOut";
+    bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_EXIT_TIME;
+    bossDefeatCutinOutStartedAt = performance.now();
+    bossDefeatCutinOutTimer = setTimeout(finishBossDefeatCutin, BOSS_DEFEAT_CUTIN_EXIT_TIME * 1000);
+    if (DEBUG_MODE) console.info("[ending-cutin:out]", { reason: clearReason, seconds: BOSS_DEFEAT_CUTIN_EXIT_TIME });
+  }
+
+  function finishBossDefeatCutin() {
+    if (state !== "endingCutinOut") return;
+    if (bossDefeatCutinOutTimer) {
+      clearTimeout(bossDefeatCutinOutTimer);
+      bossDefeatCutinOutTimer = 0;
+    }
+    try {
+      showEndingForClear(clearReason, { fade: true });
+    } catch (error) {
+      forceEndingScreen(clearReason);
+    }
   }
 
   function purgeEnemiesForEnding() {
@@ -5137,12 +5181,7 @@
       const cutinElapsed = bossDefeatCutinStartedAt ? (performance.now() - bossDefeatCutinStartedAt) / 1000 : BOSS_DEFEAT_CUTIN_TIME;
       bossDefeatCutinDelay = Math.max(0, BOSS_DEFEAT_CUTIN_TIME - cutinElapsed);
       if (cutinElapsed >= BOSS_DEFEAT_CUTIN_TIME) {
-        bossDefeatCutinScreen?.classList.add("leaving");
-        bossUndefeatedCutinScreen?.classList.add("leaving");
-        state = "endingCutinOut";
-        bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_EXIT_TIME;
-        bossDefeatCutinOutStartedAt = performance.now();
-        if (DEBUG_MODE) console.info("[ending-cutin:out]", { reason: clearReason, seconds: BOSS_DEFEAT_CUTIN_EXIT_TIME });
+        startBossDefeatCutinOut();
       }
       return;
     }
@@ -5150,11 +5189,7 @@
       const outElapsed = bossDefeatCutinOutStartedAt ? (performance.now() - bossDefeatCutinOutStartedAt) / 1000 : BOSS_DEFEAT_CUTIN_EXIT_TIME;
       bossDefeatCutinDelay = Math.max(0, BOSS_DEFEAT_CUTIN_EXIT_TIME - outElapsed);
       if (outElapsed >= BOSS_DEFEAT_CUTIN_EXIT_TIME) {
-        try {
-          showEndingForClear(clearReason, { fade: true });
-        } catch (error) {
-          forceEndingScreen(clearReason);
-        }
+        finishBossDefeatCutin();
       }
       return;
     }

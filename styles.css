@@ -671,6 +671,7 @@ h2 {
 }
 
 .ending-screen {
+  z-index: 65;
   padding: 0 !important;
   background: #050403;
   backdrop-filter: none;
@@ -678,6 +679,7 @@ h2 {
 }
 
 .boss-defeat-cutin {
+  z-index: 70;
   padding: 0 !important;
   overflow: hidden;
   background: #020101;
@@ -725,11 +727,11 @@ h2 {
 
 @keyframes bossDefeatImage {
   0% {
-    opacity: 0;
+    opacity: 0.18;
     filter: brightness(0.34) saturate(0.72);
     transform: scale(1.1);
   }
-  16% {
+  8% {
     opacity: 1;
     filter: brightness(1.02) saturate(1.05);
   }
