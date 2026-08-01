@@ -215,6 +215,7 @@
   let bossDefeatCutinOutTimer = 0;
   let clearTransitionTimer = 0;
   let clearReason = "survive";
+  let clearCharacter = "piimaru";
   let lastResult = null;
   let levelChoiceReadyAt = 0;
   let pauseReturnState = "playing";
@@ -1435,6 +1436,7 @@
     clearMaxDelay = CLEAR_TRANSITION_TIME;
     bossDefeatCutinDelay = 0;
     clearReason = "survive";
+    clearCharacter = player.character;
     lastResult = null;
     projectiles = [];
     enemyBullets = [];
@@ -3985,9 +3987,9 @@
     resetBossDefeatCutinClasses();
     const cutinImage = cutinScreen.querySelector("img");
     if (cutinImage && reason !== "survive") {
-      const src = player.character === "denkichi" ? denkichiBossDefeatCutinImage.src : bossDefeatCutinImage.src;
+      const src = clearCharacter === "denkichi" ? denkichiBossDefeatCutinImage.src : bossDefeatCutinImage.src;
       cutinImage.src = src;
-      cutinImage.alt = player.character === "denkichi" ? "伝吉 終焉の黒角王討伐" : "終焉の黒角王討伐";
+      cutinImage.alt = clearCharacter === "denkichi" ? "伝吉 終焉の黒角王討伐" : "終焉の黒角王討伐";
     }
     bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_TIME;
     bossDefeatCutinStartedAt = performance.now();
@@ -3995,7 +3997,7 @@
     void cutinScreen.offsetWidth;
     cutinScreen.classList.add("active");
     bossDefeatCutinTimer = setTimeout(startBossDefeatCutinOut, BOSS_DEFEAT_CUTIN_TIME * 1000);
-    if (DEBUG_MODE) console.info("[ending-cutin:start]", { reason, seconds: BOSS_DEFEAT_CUTIN_TIME });
+    if (DEBUG_MODE) console.info("[ending-cutin:start]", { reason, character: clearCharacter, image: cutinImage?.getAttribute("src"), seconds: BOSS_DEFEAT_CUTIN_TIME });
   }
 
   function startBossDefeatCutinOut() {
@@ -4044,6 +4046,7 @@
     if (state === "clearing" || state === "ending" || state === "gameover") return;
     state = "clearing";
     clearReason = reason;
+    clearCharacter = player.character;
     clearMaxDelay = CLEAR_TRANSITION_TIME;
     clearDelay = clearMaxDelay;
     purgeEnemiesForEnding();
