@@ -248,6 +248,8 @@
   denkichiBossDefeatCutinImage.src = "assets/denkichi-boss-defeat-cutin.webp";
   const bossUndefeatedCutinImage = new Image();
   bossUndefeatedCutinImage.src = "assets/boss-undefeated-cutin.webp";
+  const denkichiUndefeatedCutinImage = new Image();
+  denkichiUndefeatedCutinImage.src = "assets/denkichi-undefeated-cutin.webp";
   const endingImageSources = {
     piimaru: "assets/ending-neko-musha.webp",
     denkichi: "assets/ending-denkichi.jpg"
@@ -1162,6 +1164,7 @@
     { type: "image", group: "演出", name: "伝吉奥義札", src: "assets/denkichi-fury-cutin.webp", desc: "伝吉の奥義発動カットイン。" },
     { type: "image", group: "演出", name: "伝吉登場", src: "assets/denkichi-jackpot-cutin.webp", desc: "伝吉の大当たりカットイン。" },
     { type: "image", group: "演出", name: "伝吉 黒角王討伐", src: "assets/denkichi-boss-defeat-cutin.webp", desc: "伝吉で終焉の黒角王を倒した時のカットイン。" },
+    { type: "image", group: "演出", name: "伝吉 黒角王未討伐", src: "assets/denkichi-undefeated-cutin.webp", desc: "伝吉で終焉の黒角王を倒せなかった時のカットイン。" },
     { type: "image", group: "キャラ", name: "ぴぃ丸", src: "assets/characters/hero-samurai.png", desc: "隻眼の猫武者。" },
     { type: "image", group: "キャラ", name: "伝吉", src: "assets/characters/denkichi.png", desc: "クリア後に選べる剣士。" },
     { type: "image", group: "キャラ", name: "終焉の黒角王", src: "assets/characters/overlord.png", desc: "夜の果てに待つ最終ボス。" },
@@ -3986,10 +3989,14 @@
     }
     resetBossDefeatCutinClasses();
     const cutinImage = cutinScreen.querySelector("img");
-    if (cutinImage && reason !== "survive") {
-      const src = clearCharacter === "denkichi" ? denkichiBossDefeatCutinImage.src : bossDefeatCutinImage.src;
+    if (cutinImage) {
+      const src = reason === "survive"
+        ? (clearCharacter === "denkichi" ? denkichiUndefeatedCutinImage.src : bossUndefeatedCutinImage.src)
+        : (clearCharacter === "denkichi" ? denkichiBossDefeatCutinImage.src : bossDefeatCutinImage.src);
       cutinImage.src = src;
-      cutinImage.alt = clearCharacter === "denkichi" ? "伝吉 終焉の黒角王討伐" : "終焉の黒角王討伐";
+      cutinImage.alt = reason === "survive"
+        ? (clearCharacter === "denkichi" ? "伝吉 終焉の黒角王未討伐" : "終焉の黒角王未討伐")
+        : (clearCharacter === "denkichi" ? "伝吉 終焉の黒角王討伐" : "終焉の黒角王討伐");
     }
     bossDefeatCutinDelay = BOSS_DEFEAT_CUTIN_TIME;
     bossDefeatCutinStartedAt = performance.now();
