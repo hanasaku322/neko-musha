@@ -71,6 +71,7 @@
   const ENDGAME_TIME = 600;
   const ENDING_TIME = 900;
   const MERCHANT_START_TIME = 300;
+  const MERCHANT_LIFETIME = 25;
   const MERCHANT_ONIGIRI_COST = 50;
   const MERCHANT_ITEM_COST = 60;
   const CLEAR_TRANSITION_TIME = 2.8;
@@ -222,6 +223,8 @@
   let bossDefeatCutinOutTimer = 0;
   let clearTransitionTimer = 0;
   let endingBgmRetryTimer = 0;
+  let endingBgmWatchTimer = 0;
+  let endingBgmPrimed = false;
   let clearReason = "survive";
   let clearCharacter = "piimaru";
   let lastResult = null;
@@ -244,7 +247,7 @@
   const stageImage = new Image();
   stageImage.src = "assets/sengoku-stage.webp";
   const merchantImage = new Image();
-  merchantImage.src = "assets/characters/tanuki-merchant.webp";
+  merchantImage.src = "assets/characters/tanuki-merchant-sprite.webp";
   const furyCutinImage = new Image();
   furyCutinImage.src = "assets/neko-fury-cutin.webp";
   const denkichiFuryCutinImage = new Image();
@@ -1882,8 +1885,9 @@
     voice.play().catch(() => {});
   }
 
-  function playEndingBgm() {
+  function playEndingBgm(options = {}) {
     if (!endingBgmTrack) return;
+    const reset = options.reset !== false;
     if (endingBgmRetryTimer) {
       clearTimeout(endingBgmRetryTimer);
       endingBgmRetryTimer = 0;
@@ -1893,9 +1897,10 @@
       if (state !== "ending" || !endingBgmTrack) return;
       attempts++;
       try {
+        endingBgmTrack.muted = false;
         endingBgmTrack.volume = 0.48;
         if (endingBgmTrack.readyState === 0) endingBgmTrack.load();
-        if (endingBgmTrack.currentTime === 0 || endingBgmTrack.ended) endingBgmTrack.currentTime = 0;
+        if (reset || endingBgmTrack.ended) endingBgmTrack.currentTime = 0;
         const playPromise = endingBgmTrack.play();
         if (playPromise && typeof playPromise.catch === "function") {
           playPromise.catch(error => {
@@ -1913,11 +1918,52 @@
       }
     };
     try {
-      endingBgmTrack.currentTime = 0;
+      if (reset) endingBgmTrack.currentTime = 0;
     } catch (error) {
       // Ending should never be blocked by audio seek/play failures on mobile browsers.
     }
     tryPlay();
+  }
+
+  function ensureEndingBgmPlaying() {
+    if (!endingBgmTrack || state !== "ending" || !endingBgmTrack.paused) return;
+    playEndingBgm({ reset: false });
+  }
+
+  function primeEndingBgm() {
+    if (!endingBgmTrack || endingBgmPrimed) return;
+    endingBgmPrimed = true;
+    try {
+      endingBgmTrack.load();
+      endingBgmTrack.muted = true;
+      endingBgmTrack.volume = 0;
+      const playPromise = endingBgmTrack.play();
+      const resetPrime = () => {
+        try {
+          endingBgmTrack.pause();
+          endingBgmTrack.currentTime = 0;
+        } catch (error) {
+          // Mobile browsers may reject seeking before metadata is ready.
+        }
+        endingBgmTrack.muted = false;
+        endingBgmTrack.volume = 0.48;
+      };
+      if (playPromise && typeof playPromise.then === "function") {
+        playPromise.then(resetPrime).catch(error => {
+          endingBgmPrimed = false;
+          endingBgmTrack.muted = false;
+          endingBgmTrack.volume = 0.48;
+          if (DEBUG_MODE) console.info("[ending-bgm:prime-failed]", { error: error?.name || String(error) });
+        });
+      } else {
+        resetPrime();
+      }
+    } catch (error) {
+      endingBgmPrimed = false;
+      endingBgmTrack.muted = false;
+      endingBgmTrack.volume = 0.48;
+      if (DEBUG_MODE) console.info("[ending-bgm:prime-error]", { error: error?.name || String(error) });
+    }
   }
 
   function stopEndingBgm() {
@@ -1926,7 +1972,9 @@
       clearTimeout(endingBgmRetryTimer);
       endingBgmRetryTimer = 0;
     }
+    endingBgmWatchTimer = 0;
     try {
+      endingBgmTrack.muted = false;
       endingBgmTrack.pause();
       endingBgmTrack.currentTime = 0;
     } catch (error) {
@@ -1994,6 +2042,7 @@
     state = "playing";
     if (!audio) audio = makeAudio();
     if (audio) audio.start();
+    primeEndingBgm();
     playCatVoice("meow", 0.42, true);
     last = performance.now();
     frameCarry = 0;
@@ -2959,9 +3008,10 @@
     merchant = {
       x: base.x,
       y: base.y,
-      r: 58,
+      r: 46,
       pulse: rand(0, TAU),
-      touchLatched: false
+      touchLatched: false,
+      expiresAt: elapsed + MERCHANT_LIFETIME
     };
     showToast({ sprite: 11 }, "たぬき商店が現れた！");
     if (audio) audio.sfx("chest");
@@ -2970,6 +3020,10 @@
   function updateMerchant(dt) {
     if (!merchant) return;
     merchant.pulse += dt;
+    if (elapsed >= merchant.expiresAt) {
+      merchant = null;
+      return;
+    }
     const near = d2(merchant, player) < sqr(player.r + merchant.r + 12);
     if (merchant.touchLatched) {
       if (!near && d2(merchant, player) > sqr(player.r + merchant.r + 42)) merchant.touchLatched = false;
@@ -3038,7 +3092,8 @@
     resetScreenZoomState();
     merchantScreen.classList.add("hidden");
     state = "playing";
-    if (merchant) merchant.touchLatched = true;
+    if (merchant && elapsed >= merchant.expiresAt) merchant = null;
+    else if (merchant) merchant.touchLatched = true;
     if (audio) audio.duck(false);
     last = performance.now();
   }
@@ -5551,6 +5606,14 @@
       }
       return;
     }
+    if (state === "ending") {
+      endingBgmWatchTimer -= dt;
+      if (endingBgmWatchTimer <= 0) {
+        endingBgmWatchTimer = 1;
+        ensureEndingBgmPlaying();
+      }
+      return;
+    }
     if (state !== "playing") return;
     elapsed += dt;
     if (elapsed >= ENDING_TIME) {
@@ -7340,14 +7403,14 @@
     ctx.shadowBlur = performanceGlow(18);
     ctx.fillStyle = "rgba(5, 4, 5, 0.58)";
     ctx.beginPath();
-    ctx.ellipse(0, 48, 60, 18, 0, 0, TAU);
+    ctx.ellipse(0, 43, 44, 14, 0, 0, TAU);
     ctx.fill();
     if (merchantImage.complete && merchantImage.naturalWidth) {
-      drawImageRounded(merchantImage, -78, -86, 156, 104);
+      ctx.drawImage(merchantImage, -43, -108, 86, 114);
     } else {
       ctx.fillStyle = "#b87943";
       ctx.beginPath();
-      ctx.roundRect(-54, -68, 108, 88, 8);
+      ctx.roundRect(-34, -76, 68, 82, 8);
       ctx.fill();
       ctx.fillStyle = "#ffe6a2";
       ctx.font = "900 24px sans-serif";
@@ -7359,14 +7422,14 @@
     ctx.strokeStyle = "rgba(255, 224, 122, 0.7)";
     ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.roundRect(-46, 26, 92, 26, 7);
+    ctx.roundRect(-42, 16, 84, 24, 7);
     ctx.fill();
     ctx.stroke();
     ctx.fillStyle = "#ffe98a";
-    ctx.font = "900 15px sans-serif";
+    ctx.font = "900 14px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("たぬき商店", 0, 39);
+    ctx.fillText("たぬき商店", 0, 28);
     ctx.restore();
   }
 
