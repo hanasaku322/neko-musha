@@ -10,6 +10,7 @@
   const titleScreen = document.getElementById("titleScreen");
   const titleStory = titleScreen?.querySelector(".title-story");
   const levelScreen = document.getElementById("levelScreen");
+  const merchantScreen = document.getElementById("merchantScreen");
   const gameOverScreen = document.getElementById("gameOverScreen");
   const bossDefeatCutinScreen = document.getElementById("bossDefeatCutinScreen");
   const bossUndefeatedCutinScreen = document.getElementById("bossUndefeatedCutinScreen");
@@ -31,12 +32,15 @@
   const encyclopediaButton = document.getElementById("encyclopediaButton");
   const saveResetButton = document.getElementById("saveResetButton");
   const shopCloseButton = document.getElementById("shopCloseButton");
+  const merchantCloseButton = document.getElementById("merchantCloseButton");
   const recordsCloseButton = document.getElementById("recordsCloseButton");
   const encyclopediaCloseButton = document.getElementById("encyclopediaCloseButton");
   const titleMoney = document.getElementById("titleMoney");
   const shopMoney = document.getElementById("shopMoney");
   const shopStats = document.getElementById("shopStats");
   const shopItems = document.getElementById("shopItems");
+  const merchantMoney = document.getElementById("merchantMoney");
+  const merchantItems = document.getElementById("merchantItems");
   const saveSlots = document.getElementById("saveSlots");
   const characterSelect = document.getElementById("characterSelect");
   const restartButton = document.getElementById("restartButton");
@@ -66,6 +70,9 @@
   const ITEM_MAX_LEVEL = 9;
   const ENDGAME_TIME = 600;
   const ENDING_TIME = 900;
+  const MERCHANT_START_TIME = 300;
+  const MERCHANT_ONIGIRI_COST = 50;
+  const MERCHANT_ITEM_COST = 60;
   const CLEAR_TRANSITION_TIME = 2.8;
   const BOSS_DEFEAT_CUTIN_TIME = 5.2;
   const BOSS_DEFEAT_CUTIN_EXIT_TIME = 0.75;
@@ -221,6 +228,10 @@
   let pauseReturnState = "playing";
   let maxedFallbackCount = 0;
   let lastJackpotAt = -999;
+  let merchant = null;
+  let merchantSpawned = false;
+  let merchantStock = [];
+  let merchantBoughtItemIds = new Set();
   let overlordSpawned = false;
   let testMode = false;
   let testScenario = "";
@@ -230,6 +241,8 @@
   itemAtlas.src = "assets/item-atlas.webp";
   const stageImage = new Image();
   stageImage.src = "assets/sengoku-stage.webp";
+  const merchantImage = new Image();
+  merchantImage.src = "assets/characters/tanuki-merchant.webp";
   const furyCutinImage = new Image();
   furyCutinImage.src = "assets/neko-fury-cutin.webp";
   const denkichiFuryCutinImage = new Image();
@@ -1447,6 +1460,10 @@
     projectiles = [];
     enemyBullets = [];
     enemies = [];
+    merchant = null;
+    merchantSpawned = false;
+    merchantStock = [];
+    merchantBoughtItemIds = new Set();
     gems = [];
     pickups = [];
     particles = [];
@@ -1930,6 +1947,7 @@
     hideBossDefeatCutin();
     endingScreen.classList.add("hidden");
     shopScreen.classList.add("hidden");
+    merchantScreen.classList.add("hidden");
     recordsScreen.classList.add("hidden");
     encyclopediaScreen.classList.add("hidden");
     levelScreen.classList.add("hidden");
@@ -2154,6 +2172,7 @@
     levelScreen.classList.add("hidden");
     pauseScreen.classList.add("hidden");
     shopScreen.classList.add("hidden");
+    merchantScreen.classList.add("hidden");
     encyclopediaScreen.classList.add("hidden");
     recordsScreen.classList.remove("hidden");
     renderRecords();
@@ -2536,6 +2555,7 @@
     levelScreen.classList.add("hidden");
     pauseScreen.classList.add("hidden");
     shopScreen.classList.add("hidden");
+    merchantScreen.classList.add("hidden");
     recordsScreen.classList.add("hidden");
     encyclopediaScreen.classList.remove("hidden");
     renderEncyclopedia("items");
@@ -2569,6 +2589,7 @@
     endingScreen.classList.add("hidden");
     levelScreen.classList.add("hidden");
     pauseScreen.classList.add("hidden");
+    merchantScreen.classList.add("hidden");
     recordsScreen.classList.add("hidden");
     encyclopediaScreen.classList.add("hidden");
     shopScreen.classList.remove("hidden");
@@ -2871,6 +2892,146 @@
       else break;
     }
     return choices;
+  }
+
+  function merchantHealAmount() {
+    return Math.max(38, Math.round(38 + player.regen * 8));
+  }
+
+  function spendMerchantMoney(amount) {
+    if (metaSave.money < amount) return false;
+    metaSave.money -= amount;
+    saveMeta();
+    updateTitleMoney();
+    renderSaveSlots();
+    return true;
+  }
+
+  function rollMerchantStock() {
+    const candidates = itemDefs
+      .filter(def => !isMaterialOfEvolvedItem(def.id))
+      .sort(() => Math.random() - 0.5);
+    const owned = candidates.filter(def => acquiredItems.has(def.id) && canReceiveItem(def));
+    const fresh = candidates.filter(def => !acquiredItems.has(def.id) && canReceiveItem(def));
+    return [...owned, ...fresh].slice(0, 5);
+  }
+
+  function spawnMerchant() {
+    if (merchantSpawned) return;
+    merchantSpawned = true;
+    merchantBoughtItemIds = new Set();
+    merchantStock = rollMerchantStock();
+    const base = keepPointInMap(player.x + 250, player.y - 80, 56);
+    merchant = {
+      x: base.x,
+      y: base.y,
+      r: 58,
+      pulse: rand(0, TAU),
+      touchLatched: false
+    };
+    showToast({ sprite: 11 }, "たぬき商店が現れた！");
+    if (audio) audio.sfx("chest");
+  }
+
+  function updateMerchant(dt) {
+    if (!merchant) return;
+    merchant.pulse += dt;
+    const near = d2(merchant, player) < sqr(player.r + merchant.r + 12);
+    if (merchant.touchLatched) {
+      if (!near && d2(merchant, player) > sqr(player.r + merchant.r + 42)) merchant.touchLatched = false;
+      return;
+    }
+    if (near) openMerchantShop();
+  }
+
+  function renderMerchantShop() {
+    if (!merchantItems) return;
+    if (merchantMoney) merchantMoney.textContent = `${metaSave.money}両`;
+    const healFull = player.hp >= player.maxHp - 0.5;
+    const healAmount = merchantHealAmount();
+    const rows = [
+      {
+        id: "onigiri",
+        sprite: 7,
+        name: "おにぎり",
+        desc: healFull ? "HP満タンなので買えない。" : `HPを${healAmount}回復する。満タンまで何度でも買える。`,
+        cost: MERCHANT_ONIGIRI_COST,
+        sold: false,
+        disabled: healFull || metaSave.money < MERCHANT_ONIGIRI_COST,
+        action: "onigiri"
+      },
+      ...merchantStock.map(def => {
+        const bought = merchantBoughtItemIds.has(def.id);
+        const nextLevel = nextItemLevel(def);
+        const canBuy = !bought && canReceiveItem(def);
+        return {
+          id: def.id,
+          sprite: def.sprite,
+          name: displayItemName(def),
+          desc: bought ? "購入済み。" : `${acquiredItems.has(def.id) ? `Lv ${nextLevel}へ強化` : "新しく入手"}。この商人からは一度だけ買える。`,
+          cost: MERCHANT_ITEM_COST,
+          sold: bought,
+          disabled: !canBuy || metaSave.money < MERCHANT_ITEM_COST,
+          action: "item"
+        };
+      })
+    ];
+    merchantItems.innerHTML = rows.map(row => `
+      <article class="merchant-card${row.sold ? " sold" : ""}">
+        <span class="choice-icon" style="${spriteStyle(row.sprite)}"></span>
+        <div class="merchant-copy">
+          <strong>${row.name}</strong>
+          <span>${row.desc}</span>
+        </div>
+        <button class="merchant-buy" type="button" data-merchant-action="${row.action}" data-merchant-id="${row.id}" ${row.disabled ? "disabled" : ""}>${row.cost}両</button>
+      </article>
+    `).join("");
+  }
+
+  function openMerchantShop() {
+    if (state !== "playing" || !merchant) return;
+    resetScreenZoomState();
+    state = "merchant";
+    gamepadChoiceIndex = 0;
+    merchantScreen.classList.remove("hidden");
+    pauseButton.textContent = "ステータス";
+    renderMerchantShop();
+    if (audio) audio.duck(true);
+  }
+
+  function closeMerchantShop() {
+    if (state !== "merchant") return;
+    resetScreenZoomState();
+    merchantScreen.classList.add("hidden");
+    state = "playing";
+    if (merchant) merchant.touchLatched = true;
+    if (audio) audio.duck(false);
+    last = performance.now();
+  }
+
+  function buyMerchantOnigiri() {
+    if (player.hp >= player.maxHp - 0.5) return;
+    if (!spendMerchantMoney(MERCHANT_ONIGIRI_COST)) return;
+    const before = player.hp;
+    player.hp = Math.min(player.maxHp, player.hp + merchantHealAmount());
+    const gained = Math.max(0, Math.round(player.hp - before));
+    texts.push({ x: player.x, y: player.y - player.r - 28, vy: -46, life: 1.1, max: 1.1, text: gained > 0 ? `+${gained}HP` : "満腹", color: "#fff0bb", size: 22 });
+    showToast({ sprite: 7 }, gained > 0 ? `おにぎり +${gained}HP` : "おにぎりで満腹");
+    if (audio) audio.sfx("select");
+    updateHud();
+    renderMerchantShop();
+  }
+
+  function buyMerchantItem(id) {
+    const def = findItemDef(id);
+    if (!def || merchantBoughtItemIds.has(id) || metaSave.money < MERCHANT_ITEM_COST || !canReceiveItem(def)) return;
+    if (!spendMerchantMoney(MERCHANT_ITEM_COST)) return;
+    if (addItem(def)) {
+      merchantBoughtItemIds.add(id);
+      burst(player.x, player.y, "#ffdf5a", 24, 7);
+      if (audio) audio.sfx("select");
+    }
+    renderMerchantShop();
   }
 
   function closeChoiceScreen() {
@@ -3731,6 +3892,7 @@
     endingScreen.classList.add("hidden");
     titleScreen.classList.add("hidden");
     shopScreen.classList.add("hidden");
+    merchantScreen.classList.add("hidden");
     recordsScreen.classList.add("hidden");
     encyclopediaScreen.classList.add("hidden");
     gameOverScreen.classList.remove("hidden");
@@ -3934,6 +4096,7 @@
     gameOverScreen?.classList.add("hidden");
     titleScreen?.classList.add("hidden");
     shopScreen?.classList.add("hidden");
+    merchantScreen?.classList.add("hidden");
     recordsScreen?.classList.add("hidden");
     encyclopediaScreen?.classList.add("hidden");
     updateEndingImageForCharacter();
@@ -3965,6 +4128,7 @@
     gameOverScreen?.classList.add("hidden");
     titleScreen?.classList.add("hidden");
     shopScreen?.classList.add("hidden");
+    merchantScreen?.classList.add("hidden");
     recordsScreen?.classList.add("hidden");
     encyclopediaScreen?.classList.add("hidden");
     if (upgradeChoices) upgradeChoices.innerHTML = "";
@@ -4001,6 +4165,7 @@
     gameOverScreen?.classList.add("hidden");
     titleScreen?.classList.add("hidden");
     shopScreen?.classList.add("hidden");
+    merchantScreen?.classList.add("hidden");
     recordsScreen?.classList.add("hidden");
     encyclopediaScreen?.classList.add("hidden");
     try {
@@ -4122,6 +4287,7 @@
       gameOverScreen?.classList.add("hidden");
       titleScreen?.classList.add("hidden");
       shopScreen?.classList.add("hidden");
+      merchantScreen?.classList.add("hidden");
       recordsScreen?.classList.add("hidden");
       encyclopediaScreen?.classList.add("hidden");
       hideBossDefeatCutin();
@@ -5382,6 +5548,7 @@
     }
 
     ensureOverlordSpawnedAtStartTime();
+    if (!merchantSpawned && elapsed >= MERCHANT_START_TIME) spawnMerchant();
 
     if (spawnTimer <= 0) {
       const wave = 1 + Math.floor(elapsed / 26);
@@ -5412,6 +5579,7 @@
     }
 
     movePlayer(dt);
+    updateMerchant(dt);
     updateEnemies(dt);
     updateEnemyBullets(dt);
     updateCombat(dt);
@@ -6194,6 +6362,7 @@
       if (isInDrawRange(gem, gemMargin, zoom)) drawGem(gem);
     }
     for (const pickup of pickups) if (isInDrawRange(pickup, 120, zoom)) drawPickup(pickup);
+    if (merchant && isInDrawRange(merchant, 180, zoom)) drawMerchant();
     for (const puddle of puddles) if (isInDrawRange(puddle, performanceDrawMargin(260), zoom)) drawPuddle(puddle);
     for (const enemy of enemies) if (isInDrawRange(enemy, performanceDrawMargin(isImportantEnemy(enemy) ? 260 : 190), zoom)) drawEnemy(enemy);
     for (const slash of slashes) if (isInDrawRange(slash, performanceDrawMargin(280), zoom)) drawSlash(slash);
@@ -7113,6 +7282,45 @@
     ctx.restore();
   }
 
+  function drawMerchant() {
+    if (!merchant) return;
+    const bob = Math.sin(elapsed * 4 + merchant.pulse) * 4;
+    ctx.save();
+    ctx.translate(merchant.x, merchant.y + bob);
+    ctx.shadowColor = "#ffbd72";
+    ctx.shadowBlur = performanceGlow(18);
+    ctx.fillStyle = "rgba(5, 4, 5, 0.58)";
+    ctx.beginPath();
+    ctx.ellipse(0, 48, 60, 18, 0, 0, TAU);
+    ctx.fill();
+    if (merchantImage.complete && merchantImage.naturalWidth) {
+      drawImageRounded(merchantImage, -78, -86, 156, 104);
+    } else {
+      ctx.fillStyle = "#b87943";
+      ctx.beginPath();
+      ctx.roundRect(-54, -68, 108, 88, 8);
+      ctx.fill();
+      ctx.fillStyle = "#ffe6a2";
+      ctx.font = "900 24px sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("商", 0, -14);
+    }
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = "rgba(10, 6, 5, 0.82)";
+    ctx.strokeStyle = "rgba(255, 224, 122, 0.7)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(-46, 26, 92, 26, 7);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = "#ffe98a";
+    ctx.font = "900 15px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("たぬき商店", 0, 39);
+    ctx.restore();
+  }
+
   function drawPuddle(puddle) {
     if (puddle.delay > 0) return;
     const a = clamp(puddle.life / puddle.max, 0, 1);
@@ -7489,7 +7697,7 @@
     if (archiveViewer && target?.closest?.(".archive-viewer-stage")) return true;
     if (state === "ending" && target?.closest?.(".ending-image-viewport")) return true;
     if (state === "records" && target?.closest?.(".records-screen")) return true;
-    if (target?.closest?.(".records-panel, .encyclopedia-panel, .shop-panel, .pause-panel, .level-panel, .result-panel")) return true;
+    if (target?.closest?.(".records-panel, .encyclopedia-panel, .shop-panel, .merchant-panel, .pause-panel, .level-panel, .result-panel")) return true;
     return false;
   }
 
@@ -7524,6 +7732,7 @@
   function currentGamepadButtons() {
     if (state === "title") return [startButton, shopButton, recordsButton, encyclopediaButton, ...Array.from(characterSelect?.querySelectorAll("button") || []), ...Array.from(saveSlots?.querySelectorAll("button") || [])];
     if (state === "shop") return Array.from(shopScreen.querySelectorAll("button"));
+    if (state === "merchant") return Array.from(merchantScreen.querySelectorAll("button"));
     if (state === "records") return [recordsCloseButton];
     if (state === "encyclopedia") return [...Array.from(encyclopediaTabs?.querySelectorAll("button") || []), encyclopediaCloseButton];
     if (state === "gameover") return [restartButton];
@@ -7724,6 +7933,14 @@
     const button = event.target.closest("[data-shop-id]");
     if (!button) return;
     buyShopUpgrade(button.dataset.shopId);
+  });
+  merchantCloseButton?.addEventListener("click", closeMerchantShop);
+  merchantItems?.addEventListener("click", event => {
+    const button = event.target.closest("[data-merchant-action]");
+    if (!button) return;
+    const action = button.dataset.merchantAction;
+    if (action === "onigiri") buyMerchantOnigiri();
+    if (action === "item") buyMerchantItem(button.dataset.merchantId);
   });
   restartButton.addEventListener("click", returnToTitle);
   endingImageViewport?.addEventListener("pointerdown", onEndingPointerDown);
