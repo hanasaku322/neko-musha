@@ -3423,15 +3423,22 @@
     const candidates = itemDefs
       .filter(canUpgradeOwnedItem)
       .sort(() => Math.random() - 0.5);
-    if (candidates.length < 3) {
+    const upgradePool = candidates
+      .flatMap(def => {
+        const remaining = itemMaxLevel(def) - (acquiredItems.get(def.id) || 0);
+        const count = Math.min(2, Math.max(0, remaining));
+        return Array.from({ length: count }, () => def);
+      })
+      .sort(() => Math.random() - 0.5);
+    if (upgradePool.length < 3) {
       pauseForLevel();
       return;
     }
     lastJackpotAt = elapsed;
 
     const minCount = clamp(options.minCount || 3, 3, 5);
-    const baseCount = Math.min(candidates.length, Math.max(minCount, 3 + Math.floor(rand(0, 3))));
-    const winners = candidates.slice(0, Math.min(8, candidates.length));
+    const baseCount = Math.min(upgradePool.length, Math.max(minCount, 3 + Math.floor(rand(0, 3))));
+    const winners = upgradePool.slice(0, Math.min(8, upgradePool.length));
     let targetCount = baseCount;
     let reelIndex = 0;
     let ready = false;
@@ -3444,6 +3451,8 @@
         source: options.source || "level",
         tier: options.tier || "-",
         baseCount,
+        uniqueCandidates: candidates.length,
+        upgradePool: upgradePool.length,
         winners: winners.length,
         eightCutinEligible,
         eightCutinChance,
