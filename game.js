@@ -561,7 +561,6 @@
   let texts = [];
   let slashes = [];
   let shockwaves = [];
-  let killRingCooldown = 0;
   let puddles = [];
   let furyCutin = null;
   let acquiredItems = new Map();
@@ -1442,7 +1441,6 @@
     texts = [];
     slashes = [];
     shockwaves = [];
-    killRingCooldown = 0;
     gemCompactTimer = 0;
     puddles = [];
     furyCutin = null;
@@ -5192,12 +5190,6 @@
     const particleCount = boss ? 28 : strongEnemy ? 12 : perfMode.level >= 1 ? 2 : 4;
     const power = boss ? 8 : strongEnemy ? 5 : 3.5;
     burst(enemy.x, enemy.y, color, particleCount, power);
-    const ringLimit = perfMode.level >= 2 ? 8 : perfMode.level >= 1 ? 12 : 18;
-    const canAddRing = shockwaves.length < ringLimit && (strongEnemy || killRingCooldown <= 0);
-    if (!canAddRing) return;
-    const life = boss ? 0.34 : strongEnemy ? 0.28 : 0.18;
-    pushShockwave({ x: enemy.x, y: enemy.y, r: enemy.r * (boss ? 1 : 0.75), life, max: life, color, power: 0 }, strongEnemy);
-    if (!strongEnemy) killRingCooldown = perfMode.level >= 2 ? 0.16 : perfMode.level >= 1 ? 0.11 : 0.075;
   }
 
   function update(dt) {
@@ -5256,7 +5248,6 @@
     toastTimer -= dt;
     enemyIntroTimer -= dt;
     killSfxTimer = Math.max(0, killSfxTimer - dt);
-    killRingCooldown = Math.max(0, killRingCooldown - dt);
     catVoiceTimer = Math.max(0, catVoiceTimer - dt);
     if (furyCutin) {
       furyCutin.life -= dt;
