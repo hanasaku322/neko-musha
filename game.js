@@ -1935,30 +1935,12 @@
     if (!endingBgmTrack || endingBgmPrimed) return;
     endingBgmPrimed = true;
     try {
+      endingBgmTrack.preload = "auto";
       endingBgmTrack.load();
-      endingBgmTrack.muted = true;
-      endingBgmTrack.volume = 0;
-      const playPromise = endingBgmTrack.play();
-      const resetPrime = () => {
-        try {
-          endingBgmTrack.pause();
-          endingBgmTrack.currentTime = 0;
-        } catch (error) {
-          // Mobile browsers may reject seeking before metadata is ready.
-        }
-        endingBgmTrack.muted = false;
-        endingBgmTrack.volume = 0.48;
-      };
-      if (playPromise && typeof playPromise.then === "function") {
-        playPromise.then(resetPrime).catch(error => {
-          endingBgmPrimed = false;
-          endingBgmTrack.muted = false;
-          endingBgmTrack.volume = 0.48;
-          if (DEBUG_MODE) console.info("[ending-bgm:prime-failed]", { error: error?.name || String(error) });
-        });
-      } else {
-        resetPrime();
-      }
+      endingBgmTrack.muted = false;
+      endingBgmTrack.volume = 0.48;
+      endingBgmTrack.pause();
+      endingBgmTrack.currentTime = 0;
     } catch (error) {
       endingBgmPrimed = false;
       endingBgmTrack.muted = false;
@@ -2025,6 +2007,7 @@
     clearEndingFallbackTimer();
     clearEndingTransitionTimer();
     stopEndingBgm();
+    stopArchiveAudio();
     titleScreen.classList.add("hidden");
     gameOverScreen.classList.add("hidden");
     hideBossDefeatCutin();
@@ -4033,6 +4016,7 @@
     pauseReturnState = "playing";
     clearEndingFallbackTimer();
     stopEndingBgm();
+    stopArchiveAudio();
     gamepadChoiceIndex = 0;
     keys.clear();
     pointer.active = false;
