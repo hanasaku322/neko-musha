@@ -71,7 +71,8 @@
   const ENDGAME_TIME = 600;
   const ENDING_TIME = 900;
   const MERCHANT_START_TIME = 300;
-  const MERCHANT_LIFETIME = 40;
+  const MERCHANT_CROSSING_TIME = 25;
+  const MERCHANT_WAIT_TIME = 20;
   const MERCHANT_ONIGIRI_COST = 50;
   const MERCHANT_ITEM_COST = 60;
   const CLEAR_TRANSITION_TIME = 2.8;
@@ -2994,24 +2995,37 @@
     const topPadding = 96 / zoom;
     const bottomPadding = 84 / zoom;
     const base = keepPointInMap(player.x, player.y + 110, 56);
-    const routeY = clamp(base.y, view.y + topPadding, view.y + view.h - bottomPadding);
+    let routeY = clamp(base.y, view.y + topPadding, view.y + view.h - bottomPadding);
     const startX = view.x + view.w + sidePadding;
     const endX = view.x - sidePadding;
+    const rawWaitX = view.x + clamp(170 / zoom, view.w * 0.12, view.w * 0.22);
+    const waitTouchPoint = keepPointInMap(rawWaitX + 55, routeY + 6, 92);
+    routeY = waitTouchPoint.y - 6;
+    const waitX = waitTouchPoint.x - 55;
+    const routeDistance = Math.max(1, startX - endX);
+    const routeSpeed = routeDistance / MERCHANT_CROSSING_TIME;
+    const walkInDuration = Math.max(0.1, (startX - waitX) / routeSpeed);
+    const walkOutDuration = Math.max(0.1, (waitX - endX) / routeSpeed);
+    const duration = walkInDuration + MERCHANT_WAIT_TIME + walkOutDuration;
     merchant = {
       x: startX,
       y: routeY,
       startX,
       endX,
+      waitX,
       baseY: routeY,
       startedAt: elapsed,
-      duration: MERCHANT_LIFETIME,
+      duration,
+      walkInDuration,
+      waitDuration: MERCHANT_WAIT_TIME,
+      walkOutDuration,
       facing: -1,
       r: 68,
       hitLeft: -54,
       hitRight: 164,
       pulse: rand(0, TAU),
       touchLatched: false,
-      expiresAt: elapsed + MERCHANT_LIFETIME
+      expiresAt: elapsed + duration
     };
     showToast({ sprite: 11 }, "たぬき商店が現れた！");
     if (audio) audio.sfx("chest");
@@ -3020,9 +3034,20 @@
   function updateMerchant(dt) {
     if (!merchant) return;
     merchant.pulse += dt;
-    const t = clamp((elapsed - merchant.startedAt) / Math.max(0.1, merchant.duration), 0, 1);
-    merchant.x = merchant.startX + (merchant.endX - merchant.startX) * t;
-    merchant.y = merchant.baseY + Math.sin(t * TAU * 2 + merchant.pulse) * 5;
+    const age = elapsed - merchant.startedAt;
+    const waitEnd = merchant.walkInDuration + merchant.waitDuration;
+    if (age < merchant.walkInDuration) {
+      const t = clamp(age / Math.max(0.1, merchant.walkInDuration), 0, 1);
+      merchant.x = merchant.startX + (merchant.waitX - merchant.startX) * t;
+      merchant.y = merchant.baseY + Math.sin(t * TAU * 2 + merchant.pulse) * 5;
+    } else if (age < waitEnd) {
+      merchant.x = merchant.waitX;
+      merchant.y = merchant.baseY;
+    } else {
+      const t = clamp((age - waitEnd) / Math.max(0.1, merchant.walkOutDuration), 0, 1);
+      merchant.x = merchant.waitX + (merchant.endX - merchant.waitX) * t;
+      merchant.y = merchant.baseY + Math.sin(t * TAU + merchant.pulse) * 5;
+    }
     if (elapsed >= merchant.expiresAt) {
       merchant = null;
       return;
@@ -7406,7 +7431,9 @@
 
   function drawMerchant() {
     if (!merchant) return;
-    const walkFrame = Math.floor(((elapsed - merchant.startedAt) * 7.2) % 4);
+    const age = elapsed - merchant.startedAt;
+    const waiting = age >= merchant.walkInDuration && age < merchant.walkInDuration + merchant.waitDuration;
+    const walkFrame = waiting ? 1 : Math.floor(((elapsed - merchant.startedAt) * 7.2) % 4);
     ctx.save();
     ctx.translate(merchant.x, merchant.y);
     ctx.shadowColor = "#ffbd72";
