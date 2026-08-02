@@ -249,6 +249,8 @@
   stageImage.src = "assets/sengoku-stage.webp";
   const merchantImage = new Image();
   merchantImage.src = "assets/characters/tanuki-merchant-cart-sheet.webp";
+  const merchantRadarImage = new Image();
+  merchantRadarImage.src = "assets/characters/tanuki-merchant-sprite.webp";
   const furyCutinImage = new Image();
   furyCutinImage.src = "assets/neko-fury-cutin.webp";
   const denkichiFuryCutinImage = new Image();
@@ -6585,6 +6587,17 @@
     const pad = clamp(Math.min(W, H) * 0.055, 26, 46);
     const topPad = Math.max(pad, 72 * currentHudScale);
     let drawn = 0;
+    if (merchant) {
+      const screen = worldToScreen(merchant.x + 55, merchant.y + 6);
+      const visible = screen.x >= pad && screen.x <= W - pad && screen.y >= topPad && screen.y <= H - pad;
+      if (!visible) {
+        drawMerchantRadarMarker({
+          x: clamp(screen.x, pad, W - pad),
+          y: clamp(screen.y, topPad, H - pad),
+          angle: Math.atan2(screen.y - H / 2, screen.x - W / 2)
+        });
+      }
+    }
     for (const pickup of pickups) {
       if (pickup.type !== "chest" && pickup.type !== "heal") continue;
       const screen = worldToScreen(pickup.x, pickup.y);
@@ -6606,6 +6619,59 @@
       drawn++;
       if (drawn >= 9) break;
     }
+  }
+
+  function drawMerchantRadarMarker({ x, y, angle }) {
+    const pulse = 1 + Math.sin(elapsed * 5.2) * 0.04;
+    const size = 24 * pulse;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.globalCompositeOperation = "source-over";
+    ctx.shadowColor = "#ffbd72";
+    ctx.shadowBlur = performanceGlow(12);
+    ctx.fillStyle = "rgba(8, 4, 2, 0.82)";
+    ctx.strokeStyle = "#ffbd72";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.52, 0, TAU);
+    ctx.fill();
+    ctx.stroke();
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(0, 0, size * 0.42, 0, TAU);
+    ctx.clip();
+    if (merchantRadarImage.complete && merchantRadarImage.naturalWidth) {
+      ctx.drawImage(merchantRadarImage, -size * 0.48, -size * 0.48, size * 0.96, size * 0.96);
+    } else {
+      ctx.fillStyle = "#b87943";
+      ctx.beginPath();
+      ctx.arc(0, 0, size * 0.32, 0, TAU);
+      ctx.fill();
+      ctx.fillStyle = "#fff0bb";
+      ctx.beginPath();
+      ctx.arc(-size * 0.1, -size * 0.06, size * 0.04, 0, TAU);
+      ctx.arc(size * 0.1, -size * 0.06, size * 0.04, 0, TAU);
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.rotate(angle);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "rgba(5, 3, 2, 0.86)";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(size * 0.54, -size * 0.32);
+    ctx.lineTo(size * 0.92, 0);
+    ctx.lineTo(size * 0.54, size * 0.32);
+    ctx.stroke();
+    ctx.strokeStyle = "#ffdf5a";
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.moveTo(size * 0.54, -size * 0.32);
+    ctx.lineTo(size * 0.92, 0);
+    ctx.lineTo(size * 0.54, size * 0.32);
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawPickupRadarMarker({ x, y, angle, glow, color }) {
