@@ -589,6 +589,7 @@
   let texts = [];
   let slashes = [];
   let shockwaves = [];
+  let lastAttackShockwaveAt = -999;
   let puddles = [];
   let furyCutin = null;
   let acquiredItems = new Map();
@@ -1478,6 +1479,7 @@
     texts = [];
     slashes = [];
     shockwaves = [];
+    lastAttackShockwaveAt = -999;
     gemCompactTimer = 0;
     puddles = [];
     furyCutin = null;
@@ -4921,8 +4923,8 @@
     const evolved = evolvedItems.has("warThunder");
     const radius = (138 + player.drum * 32) * player.area;
     const damage = scaledDamage(player.damage * (0.95 + player.drum * 0.22));
-    shockwaves.push({ x: player.x, y: player.y, r: 32, life: 0.44, max: 0.44, color: evolved ? "#7ff7ff" : "#ffb93f", power: 0, kind: evolved ? "warThunder" : "drum" });
-    if (evolved) shockwaves.push({ x: player.x, y: player.y, r: 62, life: 0.34, max: 0.34, color: "#ffdf5a", power: 0, kind: "warThunder" });
+    pushAttackShockwave({ x: player.x, y: player.y, r: 32, life: 0.44, max: 0.44, color: evolved ? "#7ff7ff" : "#ffb93f", power: 0, kind: evolved ? "warThunder" : "drum" });
+    if (evolved) pushAttackShockwave({ x: player.x, y: player.y, r: 62, life: 0.34, max: 0.34, color: "#ffdf5a", power: 0, kind: "warThunder" });
     for (const enemy of enemies) {
       if (d2(player, enemy) < sqr(radius + enemy.r)) damageEnemy(enemy, damage, Math.atan2(enemy.y - player.y, enemy.x - player.x));
     }
@@ -5155,7 +5157,7 @@
 
   function doSmokeBomb() {
     const radius = 150 + player.smoke * 34;
-    shockwaves.push({ x: player.x, y: player.y, r: 28, life: 0.5, max: 0.5, color: "#b8b8c8", power: 0 });
+    pushAttackShockwave({ x: player.x, y: player.y, r: 28, life: 0.5, max: 0.5, color: "#b8b8c8", power: 0 });
     burst(player.x, player.y, "#b8b8c8", 22, 7);
     for (const enemy of enemies) {
       if (d2(player, enemy) < sqr(radius + enemy.r)) {
@@ -5231,7 +5233,7 @@
         color: evolved ? "#7ff7ff" : "#6fc8ff",
         kind: evolved ? "pureFlood" : "sake"
       });
-      if (delay <= 0) shockwaves.push({ x, y, r: 16, life: 0.28, max: 0.28, color: "#6fc8ff", power: 0 });
+      if (delay <= 0) pushAttackShockwave({ x, y, r: 16, life: 0.28, max: 0.28, color: "#6fc8ff", power: 0 });
     }
   }
 
@@ -5244,7 +5246,7 @@
     camera.shake = Math.max(camera.shake, 17);
     showToast({ sprite: 0 }, "猫神奥義札: 操作方向へ奥義乱舞");
     burst(player.x, player.y, "#ffdf5a", 86, 16);
-    shockwaves.push({ x: player.x, y: player.y, r: 58, life: 0.82, max: 0.82, color: "#ffdf5a", power: 0 });
+    pushAttackShockwave({ x: player.x, y: player.y, r: 58, life: 0.82, max: 0.82, color: "#ffdf5a", power: 0 }, true);
     if (audio) audio.sfx("fury");
     playCatVoice("meow", 0.72, true);
   }
@@ -5295,7 +5297,7 @@
     const tipY = player.y + sa * Math.min(reach, 540);
     if (player.furyPulse % 3 === 0) {
       areaDamage(tipX, tipY, 150 * Math.min(player.area, 1.35), scaledDamage(player.damage * 1.45), "#ffdf5a");
-      shockwaves.push({ x: tipX, y: tipY, r: 42, life: 0.42, max: 0.42, color: "#ffdf5a", power: 0 });
+      pushAttackShockwave({ x: tipX, y: tipY, r: 42, life: 0.42, max: 0.42, color: "#ffdf5a", power: 0 });
     }
     if (player.furyPulse % 2 === 0) {
       burst(player.x + ca * rand(120, 520), player.y + sa * rand(120, 520), color, Math.min(28, 12 + hitCount), 10);
@@ -5939,7 +5941,7 @@
       if (dy > radius || dy < -radius) continue;
       if (dx * dx + dy * dy < limit) damageEnemy(enemy, damage, Math.atan2(dy, dx));
     }
-    pushShockwave({ x, y, r: 18, life: 0.26, max: 0.26, color, power: 0 });
+    pushAttackShockwave({ x, y, r: 18, life: 0.26, max: 0.26, color, power: 0 });
   }
 
   function updatePuddles(dt) {
@@ -5949,7 +5951,7 @@
         puddle.delay -= dt;
         if (puddle.delay <= 0 && !puddle.appeared) {
           puddle.appeared = true;
-          pushShockwave({ x: puddle.x, y: puddle.y, r: 14, life: 0.24, max: 0.24, color: puddle.color || "#6fc8ff", power: 0 });
+          pushAttackShockwave({ x: puddle.x, y: puddle.y, r: 14, life: 0.24, max: 0.24, color: puddle.color || "#6fc8ff", power: 0 });
         }
         continue;
       }
@@ -6315,7 +6317,7 @@
     }
     if (type === "bomb") {
       areaDamage(player.x, player.y, 520, scaledDamage(player.damage * 2.6), "#ffb93f");
-      shockwaves.push({ x: player.x, y: player.y, r: 40, life: 0.52, max: 0.52, color: "#ffb93f", power: 0 });
+      pushAttackShockwave({ x: player.x, y: player.y, r: 40, life: 0.52, max: 0.52, color: "#ffb93f", power: 0 }, true);
       camera.shake = Math.max(camera.shake, 10);
       showToast({ sprite: 2 }, "鬼太鼓が轟いた");
       if (audio) audio.sfx("chest");
@@ -6379,6 +6381,18 @@
       if (!isInDrawRange(wave, performanceDrawMargin(280), getCameraZoom())) return;
     }
     shockwaves.push(wave);
+  }
+
+  function pushAttackShockwave(wave, important = false) {
+    const attackCount = shockwaves.reduce((count, item) => count + (item.attack ? 1 : 0), 0);
+    const latePressure = elapsed >= 360;
+    const limit = perfMode.level >= 2 ? 3 : perfMode.level >= 1 ? 5 : latePressure ? 6 : 9;
+    if (!important && attackCount >= limit) return;
+    const minGap = perfMode.level >= 2 ? 0.18 : perfMode.level >= 1 ? 0.11 : latePressure ? 0.075 : 0.04;
+    if (!important && elapsed - lastAttackShockwaveAt < minGap) return;
+    wave.attack = true;
+    lastAttackShockwaveAt = elapsed;
+    pushShockwave(wave, important);
   }
 
   function updateList(list, dt, fn = null) {
