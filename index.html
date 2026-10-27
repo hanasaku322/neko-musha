@@ -6,6 +6,7 @@
   <title>猫武者 - 戦国サバイバルアクション</title>
   <meta name="description" content="隻眼の猫武者となり、戦国の夜を生き抜くサバイバルアクション。妖怪や鬼を斬り伏せ、15分の死闘を生き残れ。">
   <meta name="theme-color" content="#08070b">
+  <meta name="build-version" content="2026-10-27-motion">
   <meta property="og:site_name" content="猫武者">
   <meta property="og:title" content="猫武者 - 戦国サバイバルアクション">
   <meta property="og:description" content="捨てられた一匹の猫が、武者となり戦国の夜を生き抜く。">
@@ -18,14 +19,16 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="assets/characters/hero-samurai.png">
   <link rel="apple-touch-icon" href="assets/characters/hero-samurai.png">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=20261027-motion">
+  <link rel="stylesheet" href="stage-select.css?v=20261027-motion">
+  <link rel="stylesheet" href="quality.css?v=20261027-motion">
 </head>
 <body>
   <main class="shell">
-    <audio id="bgmTrack" preload="auto" loop>
+    <audio id="bgmTrack" preload="none" loop>
       <source src="assets/bgm/field-theme.mp3" type="audio/mpeg">
     </audio>
-    <audio id="endingBgmTrack" preload="auto" loop>
+    <audio id="endingBgmTrack" preload="none" loop>
       <source src="assets/bgm/ending-theme.mp3" type="audio/mpeg">
     </audio>
     <audio id="catMeowTrack" src="assets/cat-meow.mp3" preload="auto"></audio>
@@ -59,6 +62,22 @@
       </div>
       <button id="saveResetButton" class="save-reset-button">セーブリセット</button>
       <small class="copyright">&copy;2026 HanaSaku</small>
+    </section>
+
+    <section id="stageScreen" class="overlay stage-screen hidden" aria-labelledby="stageHeading">
+      <div class="stage-panel">
+        <div class="stage-heading"><h2 id="stageHeading">戦場を選ぶ</h2><button id="stageCloseButton" type="button">戻る</button></div>
+        <div class="stage-choices">
+          <button class="stage-choice" type="button" data-stage="sengoku">
+            <img src="assets/sengoku-stage-v2.png" alt="戦国の夜の戦場" loading="lazy">
+            <span><small>一ノ陣</small><strong>戦国の夜</strong><em>隻眼の猫武者、始まりの戦場。</em></span>
+          </button>
+          <button class="stage-choice" type="button" data-stage="shrine">
+            <img src="assets/shrine/terrain.webp" alt="雨に濡れた古社の境内" loading="lazy">
+            <span><small>二ノ陣・広さ4倍</small><strong>雷雨の古社</strong><em>雷印を避け、石灯籠の結界へ。</em></span>
+          </button>
+        </div>
+      </div>
     </section>
 
     <section id="shopScreen" class="overlay shop-screen hidden">
@@ -162,6 +181,8 @@
           </div>
           <button id="resumeButton" class="primary-button pause-resume-button">戦場へ戻る</button>
         </div>
+        <label class="music-control">楽曲音量 <input id="musicLevel" type="range" min="0" max="100" value="80" aria-label="楽曲音量"></label>
+        <label class="music-control">効果音音量 <input id="effectsLevel" type="range" min="0" max="100" value="70" aria-label="効果音音量"></label>
         <div id="pauseStats" class="pause-stats"></div>
         <div id="pauseItems" class="pause-items"></div>
         <div class="pause-actions">
@@ -200,10 +221,16 @@
       </div>
     </div>
 
+    <button id="evadeButton" class="evade-button" hidden>ダッシュ · SPACE</button>
+    <div id="battleGuide" class="battle-guide" hidden></div>
     <div id="toast" class="toast hidden"></div>
     <div id="enemyIntro" class="enemy-intro hidden"></div>
   </main>
 
-  <script src="game.js"></script>
+  <script src="shrine-stage.js?v=20261027-motion"></script>
+  <script src="combat-vfx.js?v=20261027-motion"></script>
+  <script src="heavy-motion.js?v=20261027-motion"></script>
+  <script src="sengoku-walk.js?v=20261027-motion"></script>
+  <script src="game.js?v=20261027-motion"></script>
 </body>
 </html>

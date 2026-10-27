@@ -1,0 +1,40 @@
+/* Consolidated visual treatment: warm paper, ink, oxidized gold and jade. */
+:root { --gold: #e2bd7d; --jade: #99d8c7; }
+button { transition: border-color .16s, background-color .16s, box-shadow .16s, transform .16s; }
+button:focus-visible, input:focus-visible { outline: 2px solid #c4f8eb; outline-offset: 4px; }
+.primary-button { border-radius: 4px; border-color: #b78b50; background: linear-gradient(135deg,#493127,#211b20); box-shadow: inset 0 1px #ffe5b72e,0 8px 24px #0005; letter-spacing: .12em; }
+.primary-button:hover { border-color: #f1d4a3; box-shadow: 0 0 24px #d6ae642a; }
+#startButton { background: linear-gradient(120deg,#983e36,#5c252c); border-color: #e8ad83; }
+.stage-panel, .pause-panel, .level-panel, .result-panel { border: 1px solid #b99a6166; background: linear-gradient(145deg,#191d23f5,#141216f5); box-shadow: 0 25px 90px #000a; border-radius: 8px; }
+.stage-heading h2, .level-panel h2, .pause-heading h2 { font-family: 'Yu Mincho',serif; letter-spacing: .18em; }
+.stage-choice { border-radius: 4px; border-color: #b99a6155; overflow:hidden; }
+.stage-choice img { transition: transform .3s; }
+.stage-choice:hover img { transform: scale(1.035); }
+.upgrade-card { border-radius: 6px; border-color: #b99a6166; background: linear-gradient(150deg,#28302eeb,#16191feb); box-shadow: inset 0 1px #fff1; text-align: left; }
+.upgrade-card:hover:not(:disabled) { border-color: #d6c295; background: linear-gradient(150deg,#34443e,#20232e); transform: translateY(-3px); }
+.build-hint { display:block; margin-top:12px; padding-top:10px; border-top:1px solid #d9c08b33; font-size:11px; line-height:1.7; color:#b9dfcd; }
+.reroll-button { grid-column:1/-1; justify-self:center; background:#141b22; color:#d7c194; border:1px solid #b99a6177; padding:10px 24px; border-radius:3px; cursor:pointer; }
+.reroll-button:disabled { opacity:.4; cursor:default; }
+.music-control { display:flex; gap:18px; align-items:center; color:#d5c7ad; margin:14px 0 22px; font-size:13px; }
+.music-control input { accent-color:#b4d8c4; max-width:220px; }
+.evade-button { position:absolute; z-index:4; bottom:max(30px,env(safe-area-inset-bottom)); right:max(28px,env(safe-area-inset-right)); border:1px solid #99d8c7; border-radius:50%; width:90px; height:90px; color:#d8fff4; font-weight:700; font-size:12px; background:radial-gradient(circle,#25403bea,#121c25ee); box-shadow:0 0 24px #62bcad22,inset 0 0 15px #a6fff015; touch-action:none; }
+.evade-button:disabled { color:#aca89c; border-color:#6c6c64; background:#171b21da; box-shadow:none; }
+.evade-button[hidden], .battle-guide[hidden] { display:none; }
+.battle-guide { position:absolute; z-index:3; left:50%; bottom:22px; transform:translateX(-50%); color:#d7d2b7; background:#10171dd9; border:1px solid #c2ac7544; padding:8px 16px; border-radius:3px; font-size:12px; letter-spacing:.06em; pointer-events:none; white-space:nowrap; }
+@media (max-width:700px), (pointer:coarse) {
+.evade-button { width:68px; height:68px; bottom:130px; right:20px; font-size:10px; }
+.battle-guide { bottom:8px; font-size:9px; padding:5px 9px; max-width:94vw; white-space:normal; text-align:center; }
+.build-hint { font-size:10px; margin-top:6px; padding-top:6px; }
+}
+@media (prefers-reduced-motion:reduce) { button, .stage-choice img { transition:none; } }
+
+.primary-button, .pause-resume-button { color: #fff1dc; text-shadow: 0 1px 2px #0008; }
+/* Keep action controls clear of the equipment columns. */
+.evade-button { right: max(190px, env(safe-area-inset-right)); }
+@media (max-width:700px) {
+  .evade-button { right:20px; bottom:245px; }
+  .pause-button { top:88px; right:12px; }
+}
+@media (pointer:coarse) and (orientation:landscape), (max-height:500px) {
+  .evade-button { right:max(180px,26vw); bottom:22px; width:64px; height:64px; font-size:10px; }
+}

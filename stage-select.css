@@ -1,0 +1,46 @@
+.stage-screen {
+  z-index: 50;
+  background: rgba(6, 9, 10, 0.96);
+  overflow: auto;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  touch-action: pan-y;
+  overscroll-behavior: contain;
+}
+.stage-panel {
+  width: min(760px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  margin: auto;
+  overflow-y: auto;
+  touch-action: pan-y;
+}
+.stage-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+.stage-heading h2 { font-size: 24px; margin: 0; letter-spacing: 0; }
+.stage-heading button { min-height: 40px; padding: 6px 18px; font-size: 16px; border: 1px solid #a29371; border-radius: 5px; background: #242522; color: #fff3d6; }
+.stage-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.stage-choice { padding: 0; min-width: 0; overflow: hidden; text-align: left; color: #fff0d5; border: 1px solid #8c846e; border-radius: 6px; background: #151b19; touch-action: manipulation; }
+.stage-choice:hover, .stage-choice:focus-visible { border-color: #ffe4a0; outline: 2px solid #ffe4a0; outline-offset: -3px; }
+.stage-choice img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+.stage-choice > span { display: grid; gap: 7px; padding: 15px; }
+.stage-choice small { color: #91cfbb; font-size: 13px; }
+.stage-choice strong { font-size: 25px; letter-spacing: 0; }
+.stage-choice em { font-size: 14px; font-style: normal; font-weight: 400; line-height: 1.5; color: #ddd5c4; }
+@media (orientation: portrait) and (max-width: 760px) {
+  .stage-choices { grid-template-columns: 1fr; gap: 12px; }
+  .stage-choice img { max-height: 165px; }
+  .stage-choice > span { padding: 12px; gap: 5px; }
+  .stage-choice strong { font-size: 23px; }
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .stage-panel { width: min(650px, 100%); }
+  .stage-heading { margin-bottom: 8px; }
+  .stage-heading h2 { font-size: 20px; }
+  .stage-choice img { max-height: 130px; }
+  .stage-choice > span { padding: 9px 12px; gap: 3px; }
+  .stage-choice strong { font-size: 21px; }
+  .stage-choice em { font-size: 12px; }
+}
+@media (orientation: portrait) and (max-height: 640px) {
+  .stage-choice img { max-height: 100px; }
+  .stage-heading { margin-bottom: 10px; }
+}

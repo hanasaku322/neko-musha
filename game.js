@@ -8,6 +8,10 @@
   const timeLabel = document.getElementById("timeLabel");
   const scoreLabel = document.getElementById("scoreLabel");
   const titleScreen = document.getElementById("titleScreen");
+  const stageScreen = document.getElementById("stageScreen");
+  const stageCloseButton = document.getElementById("stageCloseButton");
+  const shrineStage = window.ShrineStage;
+  let activeStage = "sengoku";
   const titleStory = titleScreen?.querySelector(".title-story");
   const levelScreen = document.getElementById("levelScreen");
   const merchantScreen = document.getElementById("merchantScreen");
@@ -100,6 +104,7 @@
   const URL_PARAMS = new URLSearchParams(window.location.search);
   const DEBUG_MODE = URL_PARAMS.has("debug");
   const DEBUG_ENDGAME_TEST = DEBUG_MODE && URL_PARAMS.has("endgameTest");
+  const SILENT_TEST = DEBUG_MODE && URL_PARAMS.has("silentTest");
 
   const rand = (min, max) => min + Math.random() * (max - min);
   const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -110,7 +115,7 @@
   const MAP = { w: 4300, h: 2420, margin: 58 };
   const MAP_RECT = { x: -MAP.w / 2, y: -MAP.h / 2, w: MAP.w, h: MAP.h };
   const MARKUP_IMAGE = { w: 1114, h: 624 };
-  const SKY_LINE_Y = MAP_RECT.y + MAP.h * 0.34;
+  let SKY_LINE_Y = MAP_RECT.y + MAP.h * 0.34;
   const WALKABLE_CENTER = imagePoint(560, 345);
   const WALKABLE_POLYGON = [
     imagePoint(828, 98),
@@ -176,6 +181,46 @@
     { chest: imagePoint(760, 420), onigiri: imagePoint(724, 446), tier: "wood" },
     { chest: imagePoint(560, 490), onigiri: imagePoint(604, 512), tier: "gold" }
   ];
+  const originalGeometry = {
+    polygon: WALKABLE_POLYGON.map(p => ({ ...p })),
+    center: { ...WALKABLE_CENTER }, safe: { ...WALKABLE_SAFE_RECT },
+    chests: fixedChestSpots.map(p => ({ ...p })),
+    supplies: fixedSupplySpots.map(p => ({ chest: { ...p.chest }, onigiri: { ...p.onigiri }, tier: p.tier }))
+  };
+
+  function configureStage(id) {
+    activeStage = id === "shrine" ? "shrine" : "sengoku";
+    selectStageBgm(activeStage);
+    const shrine = activeStage === "shrine";
+    Object.assign(MAP, { w: shrine ? 8600 : 4300, h: shrine ? 4840 : 2420 });
+    Object.assign(MAP_RECT, { x: -MAP.w / 2, y: -MAP.h / 2, w: MAP.w, h: MAP.h });
+    SKY_LINE_Y = shrine ? MAP_RECT.y : MAP_RECT.y + MAP.h * 0.34;
+    if (shrine) {
+      const inset = 90;
+      WALKABLE_POLYGON.splice(0, WALKABLE_POLYGON.length,
+        { x: MAP_RECT.x + inset, y: MAP_RECT.y + inset },
+        { x: -MAP_RECT.x - inset, y: MAP_RECT.y + inset },
+        { x: -MAP_RECT.x - inset, y: -MAP_RECT.y - inset },
+        { x: MAP_RECT.x + inset, y: -MAP_RECT.y - inset });
+      Object.assign(WALKABLE_CENTER, { x: 0, y: 0 });
+      Object.assign(WALKABLE_SAFE_RECT, { x: MAP_RECT.x + inset, y: MAP_RECT.y + inset, w: MAP.w - inset * 2, h: MAP.h - inset * 2 });
+      fixedChestSpots.splice(0, fixedChestSpots.length,
+        { x: 450, y: 220, tier: "wood" }, { x: -1050, y: -460, tier: "red" },
+        { x: 1720, y: -900, tier: "silver" }, { x: -2320, y: 1250, tier: "wood" },
+        { x: 2940, y: 1370, tier: "gold" });
+      fixedSupplySpots.splice(0, fixedSupplySpots.length, ...fixedChestSpots.map(p => ({
+        chest: { x: p.x, y: p.y }, onigiri: { x: p.x + 65, y: p.y + 55 }, tier: p.tier
+      })));
+      shrineStage.load();
+    } else {
+      sengokuWalk.load(heavySheets);
+      WALKABLE_POLYGON.splice(0, WALKABLE_POLYGON.length, ...originalGeometry.polygon);
+      Object.assign(WALKABLE_CENTER, originalGeometry.center);
+      Object.assign(WALKABLE_SAFE_RECT, originalGeometry.safe);
+      fixedChestSpots.splice(0, fixedChestSpots.length, ...originalGeometry.chests);
+      fixedSupplySpots.splice(0, fixedSupplySpots.length, ...originalGeometry.supplies);
+    }
+  }
 
   function imagePoint(x, y) {
     return {
@@ -189,13 +234,26 @@
   let DPR = 1;
   let currentHudScale = 1;
   let last = performance.now();
+  let lastDraw = -Infinity;
   let frameCarry = 0;
+  const motionPrevious = new WeakMap();
+  const heroMotion = { vx: 0, vy: 0, speed: 0, distance: 0, facing: 1, attackAge: 9, attackAngle: 0, pendingSlash: 0, hurtAge: 9, hp: 130, foot: 0 };
+  const heroMotionSheet = new Image();
+  heroMotionSheet.src = `assets/characters/hero-motion-v2${navigator.maxTouchPoints > 0 ? "-mobile" : ""}.png`;
+  const evade = { cooldown: 0, life: 0, angle: 0, trails: [] };
+  let rerolls = 3;
+  let impactPulse = 0;
+  let nextBattleCue = 60;
+  let effectsLevel = 0.7;
+  let musicLevel = 0.8;
+  try { const savedMusic = Number(localStorage.getItem("nekoMushaMusic.v1") ?? 0.8); musicLevel = Number.isFinite(savedMusic) ? Math.max(0, Math.min(1, savedMusic)) : 0.8; } catch {}
   let state = "title";
   let encyclopediaReturnState = "title";
   let archiveViewer = null;
   let archiveAudio = null;
   let archiveAudioButton = null;
   let keys = new Set();
+  const fieldGestures = new Map();
   let pointer = { x: 0, y: 0, startX: 0, startY: 0, id: null, active: false, mode: "screen", dx: 0, dy: 0 };
   let endingZoom = { scale: 1, x: 0, y: 0, pointers: new Map(), startScale: 1, startX: 0, startY: 0, startMidX: 0, startMidY: 0, startDistance: 1, tapX: 0, tapY: 0, tapTime: 0, lastTap: 0 };
   let perfMode = { level: 0, fps: TARGET_FPS, pressure: 0 };
@@ -246,7 +304,7 @@
   const itemAtlas = new Image();
   itemAtlas.src = "assets/item-atlas.webp";
   const stageImage = new Image();
-  stageImage.src = "assets/sengoku-stage.webp";
+  stageImage.src = "assets/sengoku-stage-v2.png";
   const merchantImage = new Image();
   merchantImage.src = "assets/characters/tanuki-merchant-cart-sheet.webp";
   const merchantRadarImage = new Image();
@@ -376,7 +434,7 @@
     speed: 130,
     level: 1,
     xp: 0,
-    need: 4,
+    need: 8,
     invuln: 0,
     dir: 0,
     poseTimer: 0,
@@ -479,6 +537,7 @@
       selectedCharacter: "piimaru",
       unlockedCharacters: ["piimaru"],
       denkichiCleared: false,
+      shrineStats: defaultStats(),
       stats: defaultStats()
     };
   }
@@ -511,6 +570,7 @@
         selectedCharacter: selected,
         unlockedCharacters: [...new Set(unlocked)],
         denkichiCleared: Boolean(parsed.denkichiCleared || Number(parsed.stats?.denkichiClears) > 0),
+        shrineStats: normalizeStats(parsed.shrineStats || {}),
         stats: normalizeStats(parsed.stats || fallback.stats)
       };
     } catch (error) {
@@ -588,6 +648,12 @@
   let gems = [];
   let pickups = [];
   let particles = [];
+  const combatVfx = window.CombatVFX.create({ ctx, quality: () => perfMode.level });
+  const heavyMotion = window.HeavyMotion;
+  const sengokuWalk = window.SengokuWalk;
+  const heavySheets = Object.fromEntries(["overlord", "oniElite", "support"].map(key => {
+    const image = new Image(); image.src = `assets/characters/heavy-${key}-motion${navigator.maxTouchPoints > 0 ? "-mobile" : ""}.png`; return [key, image];
+  }));
   let texts = [];
   let slashes = [];
   let shockwaves = [];
@@ -1179,7 +1245,7 @@
 
   const archiveAssets = [
     { type: "image", group: "舞台", name: "タイトル絵", src: "assets/title-neko-musha.webp", desc: "猫武者の旅立ちを飾る一枚。" },
-    { type: "image", group: "舞台", name: "戦国の夜", src: "assets/sengoku-stage.webp", desc: "妖気が漂う戦場背景。" },
+    { type: "image", group: "舞台", name: "戦国の夜", src: "assets/sengoku-stage-v2.png", desc: "妖気が漂う戦場背景。" },
     { type: "image", group: "舞台", name: "武器屋", src: "assets/shop-neko-musha.webp", desc: "出陣前に力を整える武器屋。" },
     { type: "image", group: "舞台", name: "たぬき商店", src: "assets/characters/tanuki-merchant.webp", desc: "戦場に現れる商人の店先。" },
     { type: "image", group: "舞台", name: "戦績", src: "assets/records-neko-musha.webp", desc: "これまでの戦いを刻む戦績画面。" },
@@ -1195,6 +1261,7 @@
     { type: "image", group: "キャラ", name: "伝吉", src: "assets/characters/denkichi.png", desc: "クリア後に選べる剣士。", secret: "denkichiClear" },
     { type: "image", group: "キャラ", name: "終焉の黒角王", src: "assets/characters/overlord.png", desc: "夜の果てに待つ最終ボス。" },
     { type: "audio", group: "BGM", name: "戦場曲", songTitle: "欠けた月の下で", src: "assets/bgm/field-theme.mp3", desc: "プレイフィールドで流れる曲。" },
+    { type: "audio", group: "BGM", name: "古社曲", songTitle: "月下の刃", src: "assets/bgm/shrine-gekkano-yaiba.mp3", desc: "雷雨の古社で流れる専用曲。" },
     { type: "audio", group: "BGM", name: "エンディング曲", songTitle: "片月のうた", src: "assets/bgm/ending-theme.mp3", desc: "エンディングで流れる曲。" }
   ];
 
@@ -1379,6 +1446,13 @@
   }
 
   function resetGame() {
+    fieldGestures.clear();
+    combatVfx.clear();
+    Object.assign(heroMotion, { vx: 0, vy: 0, speed: 0, distance: 0, facing: 1, attackAge: 9, attackAngle: 0, pendingSlash: 0, hurtAge: 9, hp: 130, foot: 0 });
+    motionPrevious.delete(player); motionPrevious.delete(camera);
+    evade.cooldown = 0; evade.life = 0; evade.trails.length = 0;
+    rerolls = 3; impactPulse = 0; nextBattleCue = 60;
+    shrineStage.reset();
     Object.assign(player, {
       x: 0,
       y: 0,
@@ -1387,7 +1461,7 @@
       speed: 130,
       level: 1,
       xp: 0,
-      need: 4,
+      need: 8,
       invuln: 0,
       dir: 0,
       shotTimer: 0.25,
@@ -1513,13 +1587,27 @@
     renderItemDock();
   }
 
+  function stageBgmSource(stage) {
+    return stage === "shrine" ? "assets/bgm/shrine-gekkano-yaiba.mp3" : "assets/bgm/field-theme.mp3";
+  }
+
+  function selectStageBgm(stage) {
+    if (!bgmTrack) return;
+    const src = stageBgmSource(stage);
+    if (bgmTrack.getAttribute("src") === src) return;
+    bgmTrack.pause();
+    bgmTrack.preload = SILENT_TEST ? "none" : "auto";
+    bgmTrack.src = src;
+    if (!SILENT_TEST) bgmTrack.load();
+  }
+
   function makeSampledAudio() {
-    const bgm = bgmTrack || new Audio("assets/bgm/field-theme.mp3");
+    const bgm = bgmTrack || new Audio(stageBgmSource(activeStage));
     bgm.loop = true;
-    bgm.volume = 0.42;
+    bgm.volume = 0.42 * musicLevel;
     const jackpotLoop = new Audio("assets/sfx/slot-spin.ogg");
     jackpotLoop.loop = true;
-    jackpotLoop.volume = 0.38;
+    jackpotLoop.volume = 0.38 * effectsLevel;
     const samples = {
       hit: "assets/sfx/hit.ogg",
       kill: "assets/sfx/kill.ogg",
@@ -1545,7 +1633,7 @@
     if (ac) {
       delay.delayTime.value = 0.12;
       feedback.gain.value = 0.18;
-      master.gain.value = 0.42;
+      master.gain.value = 0.42 * effectsLevel;
       delay.connect(feedback);
       feedback.connect(delay);
       delay.connect(master);
@@ -1634,7 +1722,7 @@
       const sound = pool[index];
       sound.pause();
       sound.currentTime = 0;
-      sound.volume = Math.min(1, (key === "kill" ? 0.5 : 0.72) * volume);
+      sound.volume = Math.min(1, (key === "kill" ? 0.5 : 0.72) * volume * effectsLevel);
       sound.play().catch(() => {});
       return true;
     }
@@ -1643,7 +1731,7 @@
       start() {
         if (ac && ac.state === "suspended") ac.resume();
         bgm.currentTime = bgm.paused ? 0 : bgm.currentTime;
-        bgm.volume = 0.42;
+        bgm.volume = 0.42 * musicLevel;
         bgm.play().catch(() => {});
       },
       stop() {
@@ -1651,19 +1739,32 @@
         jackpotLoop.pause();
       },
       startJackpot() {
-        bgm.volume = 0.05;
+        bgm.volume = 0.05 * musicLevel;
         jackpotLoop.currentTime = 0;
         jackpotLoop.play().catch(() => {});
       },
       stopJackpot() {
         jackpotLoop.pause();
-        bgm.volume = 0.42;
+        bgm.volume = 0.42 * musicLevel;
       },
       duck(value = true) {
-        bgm.volume = value ? 0.16 : 0.42;
+        bgm.volume = (value ? 0.16 : 0.42) * musicLevel;
+      },
+      setEffectsVolume(value) {
+        effectsLevel = value;
+        if (master) master.gain.value = 0.42 * value;
+        jackpotLoop.volume = 0.38 * value;
       },
       sfx(kind) {
         debugSfxCount++;
+        if (kind === "evade") {
+          noiseBurst(0.12, 0.06);
+          blip(360, 0.09, "triangle", 0.08);
+          blip(180, 0.16, "sine", 0.09);
+        }
+        if (kind === "wave") {
+          [146.83, 220, 293.66].forEach((freq, i) => setTimeout(() => blip(freq, 0.5, "triangle", 0.06, delay || master), i * 85));
+        }
         if (kind === "hit") playSample("hit", 0.55) || blip(rand(140, 220), 0.07, "sawtooth", 0.08);
         if (kind === "hurt") playSample("hurt", 0.85) || blip(120, 0.12, "sawtooth", 0.1);
         if (kind === "kill") {
@@ -1718,6 +1819,7 @@
   }
 
   function makeAudio() {
+    if (SILENT_TEST) return null;
     return makeSampledAudio();
     const AC = window.AudioContext || window.webkitAudioContext;
     if (!AC) return null;
@@ -1880,18 +1982,20 @@
   }
 
   function playCatVoice(kind = "meow", volume = 0.58, force = false) {
+    if (SILENT_TEST) return null;
     if (player.character === "denkichi") return;
     if (!force && catVoiceTimer > 0) return;
     const source = kind === "pain" ? catPainTrack : catMeowTrack;
     if (!source) return;
     catVoiceTimer = kind === "pain" ? 0.8 : 0.46;
     const voice = source.cloneNode();
-    voice.volume = volume;
+    voice.volume = volume * effectsLevel;
     voice.playbackRate = kind === "pain" ? rand(0.96, 1.04) : rand(0.92, 1.08);
     voice.play().catch(() => {});
   }
 
   function playEndingBgm(options = {}) {
+    if (SILENT_TEST) return null;
     if (!endingBgmTrack) return;
     const reset = options.reset !== false;
     if (endingBgmRetryTimer) {
@@ -1904,7 +2008,7 @@
       attempts++;
       try {
         endingBgmTrack.muted = false;
-        endingBgmTrack.volume = 0.48;
+        endingBgmTrack.volume = 0.48 * musicLevel;
         if (endingBgmTrack.readyState === 0) endingBgmTrack.load();
         if (reset || endingBgmTrack.ended) endingBgmTrack.currentTime = 0;
         const playPromise = endingBgmTrack.play();
@@ -1937,19 +2041,20 @@
   }
 
   function primeEndingBgm() {
+    if (SILENT_TEST) return null;
     if (!endingBgmTrack || endingBgmPrimed) return;
     endingBgmPrimed = true;
     try {
       endingBgmTrack.preload = "auto";
       endingBgmTrack.load();
       endingBgmTrack.muted = false;
-      endingBgmTrack.volume = 0.48;
+      endingBgmTrack.volume = 0.48 * musicLevel;
       endingBgmTrack.pause();
       endingBgmTrack.currentTime = 0;
     } catch (error) {
       endingBgmPrimed = false;
       endingBgmTrack.muted = false;
-      endingBgmTrack.volume = 0.48;
+      endingBgmTrack.volume = 0.48 * musicLevel;
       if (DEBUG_MODE) console.info("[ending-bgm:prime-error]", { error: error?.name || String(error) });
     }
   }
@@ -2006,8 +2111,28 @@
     }
   }
 
+  function openStageSelect() {
+    shrineStage.load();
+    resetScreenZoomState();
+    state = "stageSelect";
+    gamepadChoiceIndex = 0;
+    titleScreen.classList.add("hidden");
+    stageScreen.classList.remove("hidden");
+    stageScreen.querySelector("[data-stage]").focus({ preventScroll: true });
+  }
+
+  function closeStageSelect() {
+    stageScreen.classList.add("hidden");
+    state = "title";
+    gamepadChoiceIndex = 0;
+    titleScreen.classList.remove("hidden");
+    startButton.focus({ preventScroll: true });
+  }
+
   function startGame(options = {}) {
-    testScenario = options.scenario || (DEBUG_ENDGAME_TEST ? "endgame" : options.test ? "overlord" : "");
+    configureStage(options.stage || (DEBUG_MODE ? URL_PARAMS.get("stage") : "sengoku"));
+    stageScreen.classList.add("hidden");
+    testScenario = options.scenario || (DEBUG_MODE && URL_PARAMS.has("sengokuWalkTest") ? "sengokuWalk" : DEBUG_MODE && URL_PARAMS.has("shrineWalkTest") ? "shrineWalk" : DEBUG_MODE && URL_PARAMS.has("heavyTest") ? "heavy" : DEBUG_ENDGAME_TEST ? "endgame" : options.test ? "overlord" : "");
     testMode = !!testScenario || !!options.test;
     clearEndingFallbackTimer();
     clearEndingTransitionTimer();
@@ -2028,6 +2153,8 @@
     resetGame();
     if (testScenario === "overlord") spawnTestOverlord();
     else if (testScenario === "endgame") setupEndgameTest();
+    else if (testScenario === "heavy") setupHeavyMotionTest();
+    else if (testScenario === "shrineWalk" || testScenario === "sengokuWalk") setupGroundWalkTest();
     state = "playing";
     if (!audio) audio = makeAudio();
     if (audio) audio.start();
@@ -2213,6 +2340,9 @@
       ["累計獲得", `${formatRecordNumber(stats.totalEarned)}両`],
       ["所持金", `${formatRecordNumber(metaSave.money)}両`]
     ];
+    const shrineStats = normalizeStats(metaSave.shrineStats);
+    rows.push(["古社・出陣", `${shrineStats.runs}回`], ["古社・生還", `${shrineStats.wins}回`],
+      ["雷神・最速討伐", formatBossRecordTime(shrineStats.bestBossTime)], ["古社・最高撃破", `${shrineStats.bestKills}体`]);
     recordsCard.innerHTML = `
       <div class="records-hero">
         <span>セーブ${activeSaveSlot}</span>
@@ -2292,8 +2422,9 @@
   }
 
   function encyclopediaEnemyCard(enemy) {
-    const lockedOverlord = enemy.id === "overlord" && !hasClearedGame();
-    const src = characterSpritePaths[enemy.id] || characterSpritePaths.wraith;
+    const lockedOverlord = (enemy.id === "overlord" && !hasClearedGame())
+      || (enemy.id === "shrine-raijin" && !(metaSave.shrineStats?.wins > 0));
+    const src = enemy.src || characterSpritePaths[enemy.id] || characterSpritePaths.wraith;
     return `
       <article class="encyclopedia-card" style="--accent:${enemy.accent || "#ffdf5a"}">
         <div class="encyclopedia-art">
@@ -2342,6 +2473,7 @@
   }
 
   function toggleArchiveAudio(button) {
+    if (SILENT_TEST) return;
     const src = button?.dataset?.archiveAudio;
     if (!src) return;
     if (archiveAudioButton === button && archiveAudio && !archiveAudio.paused) {
@@ -2554,7 +2686,10 @@
       return;
     }
     if (tab === "enemies") {
-      encyclopediaList.innerHTML = encyclopediaEnemyCopy
+      const shrineEnemies = Object.entries(shrineStage.roster).map(([type, def]) => ({
+        id: `shrine-${def.id}`, name: def.name, src: def.src, type: "雷雨の古社", desc: def.desc, accent: def.color
+      }));
+      encyclopediaList.innerHTML = [...encyclopediaEnemyCopy, ...shrineEnemies]
         .filter(enemy => enemy.id !== "denkichi" || isCharacterUnlocked("denkichi"))
         .map(encyclopediaEnemyCard)
         .join("");
@@ -2728,6 +2863,28 @@
     if (testMode) return 0;
     const reward = calculateRunReward(win);
     metaSave.money += reward;
+    if (activeStage === "shrine") {
+      const stats = normalizeStats(metaSave.shrineStats);
+      stats.runs++;
+      if (win) stats.wins++;
+      if (win && reason === "boss") {
+        const time = Math.max(1, Math.floor(elapsed));
+        stats.bestBossTime = stats.bestBossTime ? Math.min(stats.bestBossTime, time) : time;
+      }
+      stats.bestTime = Math.max(stats.bestTime, Math.floor(elapsed));
+      stats.bestScore = Math.max(stats.bestScore, score);
+      stats.bestKills = Math.max(stats.bestKills, kills);
+      stats.bestLevel = Math.max(stats.bestLevel, player.level);
+      stats.bestReward = Math.max(stats.bestReward, reward);
+      stats.totalEarned += reward;
+      stats.totalScore += score;
+      stats.totalKills += kills;
+      metaSave.shrineStats = stats;
+      saveMeta();
+      updateTitleMoney();
+      renderSaveSlots();
+      return reward;
+    }
     metaSave.stats = normalizeStats(metaSave.stats);
     metaSave.stats.runs = (Number(metaSave.stats.runs) || 0) + 1;
     if (win) metaSave.stats.wins = (Number(metaSave.stats.wins) || 0) + 1;
@@ -2918,7 +3075,10 @@
   }
 
   function renderChoiceCard(item, tag) {
-    return `<span class="choice-icon" style="${spriteStyle(item.sprite)}"></span><span><span class="choice-type ${item.type}">${itemTypeLabel(item)}</span><strong>${displayItemName(item)} ${tag}</strong><span>${item.desc}</span></span>`;
+    const recipe = evolutionRecipes.find(recipe => recipe.requires.includes(item.id));
+    const partner = recipe && findItemDef(recipe.requires.find(id => id !== item.id));
+    const synergy = partner ? `<small class="build-hint">${acquiredItems.has(partner.id) ? "◆ 素材所持" : "◇ 融合素材"}：${displayItemName(partner)} → ${recipe.name}</small>` : "";
+    return `<span class="choice-icon" style="${spriteStyle(item.sprite)}"></span><span><span class="choice-type ${item.type}">${itemTypeLabel(item)}</span><strong>${displayItemName(item)} ${tag}</strong><span>${item.desc}</span>${synergy}</span>`;
   }
 
   function hasAnyChoice() {
@@ -2927,19 +3087,17 @@
 
   function getChoices() {
     const candidates = itemDefs.filter(canReceiveItem);
-    const owned = candidates.filter(def => acquiredItems.has(def.id));
-    const fresh = candidates.filter(def => !acquiredItems.has(def.id));
-    const pool = [...owned, ...owned, ...fresh].sort(() => Math.random() - 0.5);
+    const pool = candidates.map(item => ({ item, weight: (acquiredItems.has(item.id) ? 2 : 1) + (evolutionRecipes.some(recipe => recipe.requires.includes(item.id) && recipe.requires.some(id => id !== item.id && acquiredItems.has(id))) ? 1.5 : 0) }));
     const choices = [];
     const choiceCount = chance(0.12 + player.luck * 0.45) ? 4 : 3;
-    for (const item of pool) {
-      if (!choices.includes(item)) choices.push(item);
-      if (choices.length === choiceCount) break;
-    }
-    while (choices.length < choiceCount && candidates.length) {
-      const item = candidates[Math.floor(rand(0, candidates.length))];
-      if (!choices.includes(item)) choices.push(item);
-      else break;
+    while (choices.length < choiceCount && pool.length) {
+      let roll = Math.random() * pool.reduce((sum, entry) => sum + entry.weight, 0);
+      let index = pool.length - 1;
+      for (let i = 0; i < pool.length; i++) {
+        roll -= pool[i].weight;
+        if (roll <= 0) { index = i; break; }
+      }
+      choices.push(pool.splice(index, 1)[0].item);
     }
     return choices;
   }
@@ -3353,6 +3511,15 @@
       upgradeChoices.appendChild(button);
       lockedButtons.push(button);
     }
+    const reroll = document.createElement("button");
+    reroll.className = "reroll-button";
+    reroll.textContent = `引き直す · 残り${rerolls}回`;
+    reroll.disabled = rerolls <= 0;
+    reroll.addEventListener("click", () => {
+      if (state !== "level" || rerolls <= 0 || performance.now() < levelChoiceReadyAt) return;
+      rerolls--; pauseForLevel();
+    });
+    upgradeChoices.appendChild(reroll);
     setTimeout(() => {
       if (state !== "level") return;
       for (const button of lockedButtons) button.disabled = false;
@@ -3711,11 +3878,12 @@
 
   function showEnemyIntro(type) {
     if (!enemyIntro || introducedEnemyTypes.has(type)) return;
-    const def = enemyIntroDefs[type];
+    const shrineDef = activeStage === "shrine" ? shrineStage.roster[type] : null;
+    const def = shrineDef || enemyIntroDefs[type];
     if (!def) return;
     introducedEnemyTypes.add(type);
-    const src = characterSpritePaths[type] || characterSpritePaths[def.spriteKey] || characterSpritePaths.wraith;
-    const line = player.character === "denkichi" ? (enemyIntroDenkichiLines[type] || def.line) : def.line;
+    const src = shrineDef?.src || characterSpritePaths[type] || characterSpritePaths[def.spriteKey] || characterSpritePaths.wraith;
+    const line = !shrineDef && player.character === "denkichi" ? (enemyIntroDenkichiLines[type] || def.line) : def.line;
     enemyIntro.innerHTML = `<img src="${src}" alt=""><div><b>${def.name}</b><p>${line}</p></div>`;
     enemyIntro.classList.remove("hidden");
     enemyIntroTimer = 5;
@@ -3951,6 +4119,7 @@
       pauseReturnState = state === "level" ? "level" : "playing";
       if (pauseReturnState === "level") levelScreen.classList.add("hidden");
       state = "paused";
+      fieldGestures.clear();
       keys.clear();
       pointer.active = false;
       pointer.id = null;
@@ -4010,7 +4179,10 @@
     return {
       win,
       reason,
-      title: win ? reason === "boss" ? "終焉の黒角王討伐" : "夜明けまで生存" : "戦果",
+      stageId: activeStage,
+      title: activeStage === "shrine"
+        ? (win ? reason === "boss" ? "天鼓の雷神討伐" : "古社に夜明けが訪れた" : "古社の戦果")
+        : win ? reason === "boss" ? "終焉の黒角王討伐" : "夜明けまで生存" : "戦果",
       rows: [
         `生存 ${minutes}:${seconds}`,
         `撃破 ${kills}`,
@@ -4039,6 +4211,7 @@
   }
 
   function returnToTitle() {
+    stageScreen.classList.add("hidden");
     resetScreenZoomState();
     state = "title";
     testMode = false;
@@ -4219,7 +4392,20 @@
     clearTransitionTimer = 0;
   }
 
+  function finishShrineStage(reason) {
+    clearEndingFallbackTimer();
+    clearEndingTransitionTimer();
+    clearBossDefeatCutinTimers();
+    hideBossDefeatCutin();
+    shrineStage.clear();
+    const reward = grantRunReward(true, reason);
+    lastResult = lastResult || makeResult(true, reason, reward);
+    if (audio) audio.stop();
+    showResultScreen(lastResult);
+  }
+
   function forceEndingScreen(reason = clearReason) {
+    if (activeStage === "shrine") return finishShrineStage(reason);
     state = "ending";
     clearEndingFallbackTimer();
     clearEndingTransitionTimer();
@@ -4251,6 +4437,7 @@
   }
 
   function showEndingForClear(reason = "survive", options = {}) {
+    if (activeStage === "shrine") return finishShrineStage(reason);
     clearEndingFallbackTimer();
     clearEndingTransitionTimer();
     state = "ending";
@@ -4290,6 +4477,7 @@
   }
 
   function showBossDefeatCutin(reason = "boss") {
+    if (activeStage === "shrine") return finishShrineStage(reason);
     clearBossDefeatCutinTimers();
     clearEndingTransitionTimer();
     state = "endingCutin";
@@ -4366,6 +4554,7 @@
   }
 
   function purgeEnemiesForEnding() {
+    shrineStage.clear();
     for (const enemy of enemies) {
       if (particles.length < MAX_PARTICLES) burst(enemy.x, enemy.y, enemy.color || "#ffdf5a", enemy.type === "overlord" ? 28 : 12, enemy.type === "overlord" ? 10 : 6);
     }
@@ -4402,7 +4591,7 @@
       }
     }, fallbackDelay * 1000);
     try {
-      showToast({ sprite: 0 }, reason === "boss" ? "終焉の黒角王を討ち取った！" : "夜明けが訪れた！");
+      showToast({ sprite: 0 }, reason === "boss" ? (activeStage === "shrine" ? "天鼓の雷神を討ち取った！" : "終焉の黒角王を討ち取った！") : "夜明けが訪れた！");
     } catch (error) {
       // Toasts are cosmetic; the clear timer above is the important part.
     }
@@ -4416,6 +4605,7 @@
   function advanceClearToEnding() {
     if (state !== "clearing") return;
     clearEndingTransitionTimer();
+    if (activeStage === "shrine") return finishShrineStage(clearReason);
     try {
       if (clearReason === "boss" || clearReason === "survive") showBossDefeatCutin(clearReason);
       else showEndingForClear(clearReason);
@@ -4558,6 +4748,40 @@
     updateHud();
   }
 
+  function setupGroundWalkTest() {
+    elapsed=240;enemies=[];projectiles=[];enemyBullets=[];gems=[];
+    bossTimer=spawnTimer=fieldPickupTimer=thiefTimer=9999;
+    overlordSpawned=merchantSpawned=true;
+    player.shotTimer=player.slashTimer=9999;
+    const layout=activeStage === "shrine" ? [
+      ["ashigaru",-430,-60,23,32],["tengu",-190,-60,17,44],
+      ["shinobi",80,-60,16,55],["senryoThief",350,-60,18,60],
+      ["armored",-320,210,29,28],["boss",0,210,40,28],["oniElite",320,210,44,30]
+    ] : [
+      ["ashigaru",-350,-70,23,32],["shinobi",-130,-70,16,55],["senryoThief",350,-70,18,60],
+      ["armored",-350,220,29,28],["boss",-130,230,40,28],["oniElite",130,230,44,30],["overlord",350,160,60,28]
+    ];
+    for(const [type,x,y,r,speed] of layout) enemies.push({type,x:player.x+x*Math.min(1,W/1100),y:player.y+y,r,speed,
+      vx:0,vy:0,hp:999999,maxHp:999999,phase:0,hit:0,dashCd:9999,shootCd:9999,slow:0,
+      escapeLife:9999,visibleLife:9999,sparkleCd:9999,color:shrineStage.roster[type].color,sprite:"boss",spriteKey:type});
+    updateHud();
+  }
+
+  function setupHeavyMotionTest() {
+    elapsed = 480;
+    enemies = []; projectiles = []; enemyBullets = []; gems = [];
+    bossTimer = spawnTimer = fieldPickupTimer = thiefTimer = 9999;
+    overlordSpawned = true;
+    player.shotTimer = player.slashTimer = 9999;
+    for (const [i, type] of ["armored", "boss", "oniElite", "overlord"].entries()) {
+      const a = i * TAU / 4 + .35;
+      enemies.push({type, x:player.x + Math.cos(a)*290, y:player.y + Math.sin(a)*110,
+        vx:0, vy:0, hp:999999, maxHp:999999, speed:28, r:type === "overlord" ? 76 : type === "oniElite" ? 60 : 44,
+        color:"#e8c17d", sprite:"boss", spriteKey:type, hit:0, dashCd:2+i*.5, shootCd:9999, slow:0, phase:i*.7});
+    }
+    updateHud();
+  }
+
   function setupEndgameTest() {
     const hp = 7600 * 3;
     enemies = [];
@@ -4693,7 +4917,7 @@
       thiefWorth: Math.round(22 + player.level * 1.4 + Math.min(42, elapsed / 22))
     });
     showEnemyIntro("senryoThief");
-    showToast({ sprite: 11 }, "千両泥棒が現れた！");
+    showToast({ sprite: 11 }, activeStage === "shrine" ? "小判さらいが現れた！" : "千両泥棒が現れた！");
     if (audio) audio.sfx("select");
     return true;
   }
@@ -4758,7 +4982,7 @@
       speed: s.speed * openingSpeedMul,
       r: s.r,
       value: s.value,
-      color: s.color,
+      color: activeStage === "shrine" ? shrineStage.roster[type].color : s.color,
       sprite: s.sprite,
       spriteKey: s.spriteKey,
       hit: 0,
@@ -4824,6 +5048,7 @@
   }
 
   function fireBasicShotVolley(baseDir, denkichi = player.character === "denkichi") {
+    combatVfx.muzzle(player.x + Math.cos(baseDir) * player.r * 1.12, player.y + Math.sin(baseDir) * player.r * 1.12, baseDir, denkichi ? "#b0f4ff" : "#93e6ce");
     if (denkichi) {
       player.poseTimer = 0.22;
       player.beamPoseTimer = 0.24;
@@ -4889,9 +5114,9 @@
     return found.sort((a, b) => a.dd - b.dd).map(item => item.enemy);
   }
 
-  function doSlash() {
+  function doSlash(lockedAngle = null) {
     const target = nearestEnemies(1, 820)[0];
-    const angle = target ? Math.atan2(target.y - player.y, target.x - player.x) : player.dir;
+    const angle = lockedAngle ?? (target ? Math.atan2(target.y - player.y, target.x - player.x) : player.dir);
     const radius = (58 + player.slashPower * 22) * player.area;
     const sakuraMoon = evolvedItems.has("sakuraMoon");
     const eclipse = evolvedItems.has("eclipseFang");
@@ -4907,17 +5132,19 @@
       color: sakuraMoon ? "#ff9fc8" : eclipse ? "#ffdf5a" : undefined,
       edgeColor: sakuraMoon ? "#ff5f9c" : eclipse ? "#ff304f" : undefined
     });
-    for (const enemy of enemies) {
+    let connected = false;
+    for (const enemy of [...enemies]) {
       const dx = enemy.x - player.x;
       const dy = enemy.y - player.y;
       const dd = dx * dx + dy * dy;
       if (dd > sqr(radius + enemy.r)) continue;
       const da = Math.atan2(Math.sin(Math.atan2(dy, dx) - angle), Math.cos(Math.atan2(dy, dx) - angle));
       if (Math.abs(da) < 0.62 + player.slashPower * 0.04) {
+        connected = true;
         damageEnemy(enemy, scaledDamage(player.damage * (1.34 + player.slashPower * 0.18)), angle);
       }
     }
-    camera.shake = Math.max(camera.shake, 1.6);
+    if (connected) camera.shake = Math.max(camera.shake, 1.2);
   }
 
   function doDrum() {
@@ -5310,16 +5537,23 @@
   }
 
   function damageEnemy(enemy, amount, angle = 0, options = {}) {
+    if (enemy.hp <= 0 || !enemies.includes(enemy)) return;
     enemy.hp -= amount;
+    enemy.hitAngle = angle;
     const unstoppable = enemy.type === "overlord" && chance(0.68);
     if (!options.noFlinch) enemy.hit = unstoppable ? 0.045 : 0.11;
     const heavy = enemy.type === "armored" || enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord";
     const knock = enemy.type === "overlord" ? (unstoppable ? 2 : 10) : heavy ? 24 : 62;
-    if (!options.noKnockback) {
-      enemy.vx += Math.cos(angle) * knock;
-      enemy.vy += Math.sin(angle) * knock;
+    const heavyBody = heavyMotion.isHeavy(enemy);
+    if (heavyBody && !options.noFlinch && elapsed - (enemy.lastHeavyHurtAt ?? -999) > 0.22) {
+      enemy.lastHeavyHurtAt = elapsed; enemy.heavyHurtAge = 0;
     }
-    const showDamageNumber = enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord";
+    if (!options.noKnockback) {
+      const impulse = heavyBody ? knock * 0.28 : knock;
+      enemy.vx += Math.cos(angle) * impulse;
+      enemy.vy += Math.sin(angle) * impulse;
+    }
+    const showDamageNumber = enemy.type === "oniElite" || enemy.type === "boss" || enemy.type === "overlord" || amount >= player.damage * 1.5;
     if (showDamageNumber && texts.length < MAX_FLOAT_TEXTS && amount > 3) {
       const damageTextCount = texts.reduce((count, item) => count + (item.kind === "damage" ? 1 : 0), 0);
       const lateBattle = elapsed >= 480;
@@ -5331,14 +5565,18 @@
         texts.push({ kind: "damage", x: enemy.x, y: enemy.y - enemy.r, vy: -36, life: 0.42, max: 0.42, text: Math.round(amount), color: "#fff0a3" });
       }
     }
-    if (chance(0.38)) burst(enemy.x, enemy.y, enemy.color, 3, 3);
-    if (enemy.hp <= 0) killEnemy(enemy);
+    if (!options.noFlinch && elapsed - (enemy.lastImpactFxAt ?? -999) >= 0.085 && isInDrawRange(enemy, 140, getCameraZoom())) {
+      enemy.lastImpactFxAt = elapsed;
+      combatVfx.hit(enemy.x, enemy.y - enemy.r * 0.6, angle, "#e5c691", heavy || amount >= player.damage * 1.5);
+    }
+    if (enemy.hp <= 0 && enemies.includes(enemy)) killEnemy(enemy);
   }
 
   function killEnemy(enemy) {
     const idx = enemies.indexOf(enemy);
     if (idx >= 0) enemies.splice(idx, 1);
     kills++;
+    if (enemy.type === "boss" || enemy.type === "overlord") impactPulse = 0.65;
     const value = Math.round(enemy.value * 10 * (1 + player.coinBonus));
     score += value;
     const boss = enemy.type === "boss";
@@ -5534,6 +5772,10 @@
   }
 
   function projectInsideWalkable(point, radius = 0) {
+    if (activeStage === "shrine") return {
+      x: clamp(point.x, WALKABLE_SAFE_RECT.x + radius, WALKABLE_SAFE_RECT.x + WALKABLE_SAFE_RECT.w - radius),
+      y: clamp(point.y, WALKABLE_SAFE_RECT.y + radius, WALKABLE_SAFE_RECT.y + WALKABLE_SAFE_RECT.h - radius)
+    };
     const nearest = closestPointOnPolygon(point, WALKABLE_POLYGON);
     const inside = pointInPolygon(point, WALKABLE_POLYGON);
     if (inside && nearest.dist >= radius) return point;
@@ -5588,13 +5830,14 @@
       if (particles.length >= MAX_PARTICLES) particles.shift();
       const a = rand(0, TAU);
       const s = rand(40, 58 * adjustedPower);
+      const lifetime = rand(0.2, 0.52);
       particles.push({
         x,
         y,
         vx: Math.cos(a) * s,
         vy: Math.sin(a) * s,
-        life: rand(0.2, 0.52),
-        max: 0.52,
+        life: lifetime,
+        max: lifetime,
         r: rand(2.4, adjustedPower),
         color
       });
@@ -5606,12 +5849,32 @@
     const visible = isInDrawRange(enemy, 360, getCameraZoom());
     if (!visible && !strongEnemy) return;
     if (perfMode.level >= 2 && !strongEnemy && kills % 3 !== 0) return;
+    const deathSprite = activeStage === "shrine" ? shrineStage.image(enemy.type) : getCharacterFrame(enemy.spriteKey, getEnemyFrameRate(enemy), enemy.phase, getEnemyFrameSequence(enemy));
+    combatVfx.death(enemy, deathSprite, strongEnemy, enemy.x < player.x);
     const particleCount = boss ? 28 : strongEnemy ? 12 : perfMode.level >= 1 ? 2 : 4;
     const power = boss ? 8 : strongEnemy ? 5 : 3.5;
     burst(enemy.x, enemy.y, color, particleCount, power);
   }
 
+  const shrineApi = {
+    get player() { return player; },
+    get elapsed() { return elapsed; },
+    get enemies() { return enemies; },
+    playing: () => state === "playing",
+    announce: message => showToast({ sprite: 0 }, message),
+    damageEnemy: (enemy, damage) => damageEnemy(enemy, damage, 0, { noKnockback: true, noFlinch: true }),
+    hurt: damage => {
+      if (testMode || player.invuln > 0 || state !== "playing") return;
+      player.hp -= Math.max(1, damage - Math.floor(player.armor * 0.45));
+      player.invuln = 0.5;
+      camera.shake = Math.max(camera.shake, 3);
+      if (audio) audio.sfx("hurt");
+      if (player.hp <= 0) gameOver();
+    }
+  };
+
   function update(dt) {
+    if (state === "playing" || state === "clearing") combatVfx.update(dt);
     if (state === "clearing") {
       clearDelay -= dt;
       camera.shake = Math.max(0, camera.shake - dt * 68);
@@ -5652,7 +5915,16 @@
       return;
     }
     if (state !== "playing") return;
+    evade.cooldown = Math.max(0, evade.cooldown - dt);
+    evade.life = Math.max(0, evade.life - dt);
+    impactPulse = Math.max(0, impactPulse - dt * 2.8);
+    for (const trail of evade.trails) trail.life -= dt;
+    evade.trails = evade.trails.filter(trail => trail.life > 0);
     elapsed += dt;
+    if (elapsed >= nextBattleCue) {
+      nextBattleCue += 60;
+      if (audio) audio.sfx("wave");
+    }
     if (elapsed >= ENDING_TIME) {
       beginClear("survive");
       return;
@@ -5675,6 +5947,8 @@
     if (testMode) {
       if (!merchantSpawned && elapsed >= MERCHANT_START_TIME) spawnMerchant();
       movePlayer(dt);
+      if (activeStage === "shrine") shrineStage.update(dt, shrineApi);
+      if (state !== "playing") return;
       updateMerchant(dt);
       updateEnemies(dt);
       updateEnemyBullets(dt);
@@ -5730,6 +6004,8 @@
     }
 
     movePlayer(dt);
+    if (activeStage === "shrine") shrineStage.update(dt, shrineApi);
+    if (state !== "playing") return;
     updateMerchant(dt);
     updateEnemies(dt);
     updateEnemyBullets(dt);
@@ -5771,6 +6047,19 @@
     camera.shake = Math.max(0, camera.shake - dt * 68);
   }
 
+  function tryEvade(direction = null) {
+    if (state !== "playing" || evade.cooldown > 0) return false;
+    const mx = (keys.has("KeyD") || keys.has("ArrowRight") ? 1 : 0) - (keys.has("KeyA") || keys.has("ArrowLeft") ? 1 : 0) + gamepadInput.mx + (pointer.active && pointer.mode === "stick" ? pointer.dx : 0);
+    const my = (keys.has("KeyS") || keys.has("ArrowDown") ? 1 : 0) - (keys.has("KeyW") || keys.has("ArrowUp") ? 1 : 0) + gamepadInput.my + (pointer.active && pointer.mode === "stick" ? pointer.dy : 0);
+    evade.angle = Number.isFinite(direction) ? direction : mx || my ? Math.atan2(my, mx) : player.dir;
+    if (Number.isFinite(direction)) player.dir = direction;
+    evade.life = 0.2; evade.cooldown = 2.4;
+    player.invuln = Math.max(player.invuln, 0.27);
+    burst(player.x, player.y, "#a5f5ed", 8, 3);
+    if (audio) audio.sfx("evade");
+    return true;
+  }
+
   function movePlayer(dt) {
     let mx = 0;
     let my = 0;
@@ -5795,10 +6084,20 @@
         my += dy / len;
       }
     }
-    const len = Math.hypot(mx, my) || 1;
+    const len = Math.max(1, Math.hypot(mx, my));
     if (mx || my) player.dir = Math.atan2(my, mx);
-    const stepX = (mx / len) * player.speed * dt;
-    const stepY = (my / len) * player.speed * dt;
+    const dashing = evade.life > 0;
+    const response = 1 - Math.exp(-dt * (mx || my ? 24 : 34));
+    heroMotion.vx += (mx / len * player.speed - heroMotion.vx) * response;
+    heroMotion.vy += (my / len * player.speed - heroMotion.vy) * response;
+    if (Math.abs(heroMotion.vx) < 0.5) heroMotion.vx = 0;
+    if (Math.abs(heroMotion.vy) < 0.5) heroMotion.vy = 0;
+    const stepX = dashing ? Math.cos(evade.angle) * 660 * dt : heroMotion.vx * dt;
+    const stepY = dashing ? Math.sin(evade.angle) * 660 * dt : heroMotion.vy * dt;
+    if (dashing) {
+      evade.trails.push({ x: player.x, y: player.y, life: 0.24 });
+      if (evade.trails.length > 10) evade.trails.shift();
+    }
     const radius = player.r * 0.9;
     const tryX = { x: player.x + stepX, y: player.y };
     const tryY = { x: player.x, y: player.y + stepY };
@@ -5827,6 +6126,10 @@
   function updateCombat(dt) {
     player.shotTimer -= dt;
     player.slashTimer -= dt;
+    if (heroMotion.pendingSlash > 0) {
+      heroMotion.pendingSlash = Math.max(0, heroMotion.pendingSlash - dt);
+      if (heroMotion.pendingSlash <= 0) doSlash(heroMotion.attackAngle);
+    }
     player.drumTimer -= dt;
     player.shurikenTimer -= dt;
     player.craneTimer -= dt;
@@ -5845,8 +6148,11 @@
       shoot(shotCooldown);
       player.shotTimer = shotCooldown;
     }
-    if (player.slashTimer <= 0) {
-      doSlash();
+    if (player.slashTimer <= 0 && heroMotion.pendingSlash <= 0) {
+      const target = nearestEnemies(1, 820)[0];
+      heroMotion.attackAngle = target ? Math.atan2(target.y - player.y, target.x - player.x) : player.dir;
+      heroMotion.attackAge = 0;
+      heroMotion.pendingSlash = 0.1;
       player.slashTimer = cooldownTime(1.08 - player.level * 0.012 - player.slashPower * 0.02, 0.38);
     }
     if (player.drum && player.drumTimer <= 0) {
@@ -5894,6 +6200,7 @@
     const projectileCullDistance = sqr(Math.max(W, H) * 0.92 / Math.max(0.58, getCameraZoom()) + 360);
     for (let i = projectiles.length - 1; i >= 0; i--) {
       const p = projectiles[i];
+      combatVfx.track(p);
       const hitRadius = getProjectileHitRadius(p);
       if (p.homing) {
         const target = nearestEnemies(1, 620)[0];
@@ -6045,12 +6352,14 @@
       const idx = enemies.indexOf(enemy);
       if (idx >= 0) enemies.splice(idx, 1);
       burst(enemy.x, enemy.y, "#ffcf4b", 14, 7);
-      showToast({ sprite: 11 }, "千両泥棒に逃げられた！");
+      showToast({ sprite: 11 }, activeStage === "shrine" ? "小判さらいに逃げられた！" : "千両泥棒に逃げられた！");
     }
   }
 
   function updateEnemies(dt) {
     for (const enemy of enemies) {
+      if (activeStage === "shrine") shrineStage.enemyAction(enemy, player, elapsed);
+      else sengokuWalk.prepare(enemy);
       const angle = Math.atan2(player.y - enemy.y, player.x - enemy.x);
       const distanceToPlayer = Math.sqrt(d2(enemy, player));
       enemy.dashCd -= dt;
@@ -6061,13 +6370,22 @@
         updateSenryoThief(enemy, dt, angle, distanceToPlayer);
         continue;
       }
-      if (enemy.type === "overlord") updateOverlordCast(enemy, dt, angle, distanceToPlayer);
+      if (enemy.type === "overlord" && (enemy.castTimer > 0 || enemy.shootCd > 0 || !enemy.heavyState || enemy.heavyState === "walk")) updateOverlordCast(enemy, dt, angle, distanceToPlayer);
+      const heavyweight = heavyMotion.isHeavy(enemy);
+      if (heavyweight) {
+        const impact = enemy.heavyImpactSerial || 0;
+        heavyMotion.update(enemy, dt, angle, distanceToPlayer, elapsed);
+        if ((enemy.heavyImpactSerial || 0) !== impact && isInDrawRange(enemy, 160, getCameraZoom())) {
+          burst(enemy.x + ((enemy.heavyFoot || 0) % 2 ? -1 : 1) * enemy.r * 0.5, enemy.y + enemy.r * 1.2, "#a8997e", perfMode.level ? 2 : 5, 2.5);
+          if (distanceToPlayer < 420) camera.shake = Math.max(camera.shake, enemy.heavyState === "recover" ? 4.5 : 2.5);
+        }
+      } else {
       const casting = enemy.type === "overlord" && enemy.castTimer > 0;
       if (casting) {
         enemy.vx *= 0.58;
         enemy.vy *= 0.58;
       } else {
-        const weave = Math.sin(elapsed * 2.9 + enemy.phase) * (enemy.type === "tengu" ? 1.35 : enemy.type === "shinobi" ? 0.15 : 0.42);
+        const weave = Math.sin(elapsed * 2.9 + enemy.phase) * (activeStage === "shrine" && enemy.type === "ashigaru" ? 0.95 : enemy.type === "tengu" ? 1.35 : enemy.type === "shinobi" ? 0.15 : 0.42);
         const closeBoost = distanceToPlayer < 280 ? 1.18 + clamp(elapsed / 360, 0, 1) * 0.75 : 1;
         const baseSlowMul = enemy.slow > 0 ? enemy.type === "overlord" ? 0.82 : 0.54 : 1;
         const sakeSlowMul = enemy.sakeSlow > 0 ? enemy.type === "overlord" ? 0.72 : 0.38 : 1;
@@ -6075,21 +6393,25 @@
         const traitMul = enemy.type === "overlord" ? 1.04 : enemy.type === "armored" ? 0.82 : enemy.type === "oniElite" ? 0.92 : 1;
         enemy.vx += Math.cos(angle + weave) * enemy.speed * closeBoost * slowMul * traitMul * dt * 4.8;
         enemy.vy += Math.sin(angle + weave) * enemy.speed * closeBoost * slowMul * traitMul * dt * 4.8;
-        if (elapsed > 220 && enemy.type === "shinobi" && enemy.dashCd <= 0 && distanceToPlayer < 360) {
-          const dashPower = 280 + clamp((elapsed - 220) / 220, 0, 1) * 120;
-          enemy.vx += Math.cos(angle) * dashPower;
-          enemy.vy += Math.sin(angle) * dashPower;
-          enemy.dashCd = rand(1.5, 2.4);
+        const canRush = elapsed > 220 && enemy.type === "shinobi" || elapsed > 450 && (enemy.type === "oniElite" || enemy.type === "overlord");
+        if (canRush && enemy.dashCd <= 0 && distanceToPlayer < 420 && !enemy.windup) {
+          enemy.windup = 0.65;
+          enemy.rushAngle = angle;
+          enemy.dashCd = enemy.type === "shinobi" ? rand(2.6, 3.6) : rand(3.2, 4.2);
         }
-        if (elapsed > 450 && (enemy.type === "oniElite" || enemy.type === "overlord") && enemy.dashCd <= 0 && distanceToPlayer < 420) {
-          const rushPower = 170 + clamp((elapsed - 450) / 180, 0, 1) * 80;
-          enemy.vx += Math.cos(angle) * rushPower;
-          enemy.vy += Math.sin(angle) * rushPower;
-          enemy.dashCd = enemy.type === "overlord" ? rand(1.8, 2.6) : rand(2.2, 3.2);
+        if (enemy.windup > 0) {
+          enemy.windup = Math.max(0, enemy.windup - dt);
+          enemy.vx *= 0.35; enemy.vy *= 0.35;
+          if (enemy.windup <= 0) {
+            const power = enemy.type === "shinobi" ? 400 : 280;
+            enemy.vx = Math.cos(enemy.rushAngle) * power;
+            enemy.vy = Math.sin(enemy.rushAngle) * power;
+          }
         }
       }
       enemy.vx *= enemy.type === "armored" || enemy.type === "boss" || enemy.type === "overlord" ? 0.9 : 0.86;
       enemy.vy *= enemy.type === "armored" || enemy.type === "boss" || enemy.type === "overlord" ? 0.9 : 0.86;
+      }
       enemy.x += enemy.vx * dt;
       enemy.y += enemy.vy * dt;
       if (!isFlyingEnemy(enemy)) resolveMapCollisionFast(enemy, enemy.r * 0.72);
@@ -6108,8 +6430,9 @@
           if (player.armor > 0) areaDamage(player.x, player.y, 70 + player.armor * 14, scaledDamage(player.damage * (0.7 + player.armor * 0.08)), "#dcecff");
           if (player.hp <= 0) gameOver();
         }
-        enemy.vx -= Math.cos(angle) * 160;
-        enemy.vy -= Math.sin(angle) * 160;
+        const recoil = heavyweight ? 24 : 160;
+        enemy.vx -= Math.cos(angle) * recoil;
+        enemy.vy -= Math.sin(angle) * recoil;
       }
     }
   }
@@ -6138,6 +6461,10 @@
   }
 
   function fireOverlordVolley(enemy, angleToPlayer) {
+    if (activeStage === "shrine") {
+      shrineStage.summonStorm(player, elapsed, 3);
+      return;
+    }
     const speed = 250;
     const base = Number.isFinite(angleToPlayer) ? angleToPlayer : 0;
     const count = 6;
@@ -6164,6 +6491,7 @@
   function updateEnemyBullets(dt) {
     for (let i = enemyBullets.length - 1; i >= 0; i--) {
       const bullet = enemyBullets[i];
+      combatVfx.track(bullet);
       bullet.x += bullet.vx * dt;
       bullet.y += bullet.vy * dt;
       bullet.life -= dt;
@@ -6407,11 +6735,23 @@
   }
 
   function updateHud() {
-    hpBar.style.width = `${clamp(player.hp / player.maxHp, 0, 1) * 100}%`;
-    xpBar.style.width = `${clamp(player.xp / player.need, 0, 1) * 100}%`;
-    levelLabel.textContent = `Lv ${player.level}`;
-    timeLabel.textContent = formatClock(elapsed);
-    scoreLabel.textContent = score.toString();
+    // Avoid replacing text nodes and invalidating HUD layout 30 times a second.
+    const text = (node, value) => { if (node.textContent !== value) node.textContent = value; };
+    const width = (node, value) => { const next = `${Math.round(clamp(value, 0, 1) * 10000) / 100}%`; if (node.style.width !== next) node.style.width = next; };
+    width(hpBar, player.hp / player.maxHp);
+    width(xpBar, player.xp / player.need);
+    text(levelLabel, `Lv ${player.level}`);
+    text(timeLabel, formatClock(elapsed));
+    text(scoreLabel, score.toLocaleString("ja-JP"));
+    const dashButton = document.getElementById("evadeButton");
+    if (dashButton.hidden !== (state !== "playing")) dashButton.hidden = state !== "playing";
+    if (dashButton.disabled !== (evade.cooldown > 0)) dashButton.disabled = evade.cooldown > 0;
+    text(dashButton, evade.cooldown > 0 ? `ダッシュ ${evade.cooldown.toFixed(1)}` : "ダッシュ · SPACE");
+    const guide = document.getElementById("battleGuide");
+    if (guide.hidden !== (state !== "playing")) guide.hidden = state !== "playing";
+    text(guide, elapsed < 20 ? "タップ・クリックでダッシュ ／ 長押し・ドラッグ・WASDで移動" : `夜明けまで ${formatClock(Math.max(0, ENDING_TIME - elapsed))}　撃破 ${kills}`);
+    const label = `体力 ${Math.ceil(player.hp)} / ${player.maxHp}`;
+    if (hpBar.parentElement.getAttribute("aria-label") !== label) hpBar.parentElement.setAttribute("aria-label", label);
   }
 
   function updatePerformanceMode(deltaMs) {
@@ -6442,6 +6782,11 @@
     else if (perfMode.pressure >= PERF_MODE_ON || perfMode.fps < 25) perfMode.level = Math.max(perfMode.level, 1);
     else if (perfMode.pressure <= PERF_MODE_OFF && perfMode.fps > 27) perfMode.level = 0;
     else if (perfMode.level === 2 && perfMode.pressure < PERF_MODE_ON && perfMode.fps > 24) perfMode.level = 1;
+    // Start the storm stage with restrained secondary effects on touch devices.
+    if (touch && activeStage === "shrine") {
+      perfMode.level = Math.max(1, perfMode.level);
+      if (perfMode.pressure >= 2.8) perfMode.level = 2;
+    }
   }
 
   function performanceDrawMargin(base) {
@@ -6516,8 +6861,10 @@
     const sy = shakePower ? rand(-shakePower, shakePower) : 0;
     ctx.translate(W / 2 + sx, H / 2 + sy);
     ctx.scale(zoom, zoom);
-    ctx.translate(-camera.x, -camera.y);
+    const view = interpolatedPosition(camera);
+    ctx.translate(-view.x, -view.y);
     drawArena();
+    if (activeStage === "shrine") shrineStage.draw(ctx, visibleWorldRect(0), { quality: perfMode.level });
     const gemMargin = performanceDrawMargin(90);
     for (let i = 0; i < gems.length; i++) {
       const gem = gems[i];
@@ -6527,11 +6874,17 @@
     for (const pickup of pickups) if (isInDrawRange(pickup, 120, zoom)) drawPickup(pickup);
     if (merchant && isInDrawRange(merchant, 180, zoom)) drawMerchant();
     for (const puddle of puddles) if (isInDrawRange(puddle, performanceDrawMargin(260), zoom)) drawPuddle(puddle);
-    for (const enemy of enemies) if (isInDrawRange(enemy, performanceDrawMargin(isImportantEnemy(enemy) ? 260 : 190), zoom)) drawEnemy(enemy);
+    drawCombatReadability();
+    const actors = enemies.filter(enemy => isInDrawRange(enemy, performanceDrawMargin(isImportantEnemy(enemy) ? 260 : 190), zoom));
+    actors.push(player);
+    if (activeStage === "shrine") actors.push(...shrineStage.props(visibleWorldRect(0)));
+    actors.sort((a, b) => a.y + a.r - b.y - b.r);
+    for (const actor of actors) {
+      if (actor.kind === "shrineProp") shrineStage.drawProp(ctx, actor);
+      else drawInterpolated(actor, () => actor === player ? drawPlayer() : drawEnemy(actor));
+    }
     for (const slash of slashes) if (isInDrawRange(slash, performanceDrawMargin(280), zoom)) drawSlash(slash);
-    for (const p of projectiles) if (isInDrawRange(p, performanceDrawMargin(220), zoom)) drawProjectile(p);
-    for (const bullet of enemyBullets) if (isInDrawRange(bullet, performanceDrawMargin(180), zoom)) drawProjectile(bullet);
-    drawPlayer();
+    for (const p of projectiles) if (isInDrawRange(p, performanceDrawMargin(220), zoom)) drawInterpolated(p, () => drawProjectile(p));
     let drawnShockwaves = 0;
     const shockwaveLimit = perfMode.level >= 2 ? 6 : perfMode.level >= 1 ? 9 : 12;
     for (let i = shockwaves.length - 1; i >= 0 && drawnShockwaves < shockwaveLimit; i--) {
@@ -6545,13 +6898,112 @@
       const p = particles[i];
       if (isInDrawRange(p, performanceDrawMargin(160), zoom)) drawParticle(p);
     }
+    combatVfx.draw(state === "playing" ? frameCarry / 1000 : 0);
+    for (const bullet of enemyBullets) if (isInDrawRange(bullet, performanceDrawMargin(180), zoom)) drawInterpolated(bullet, () => drawProjectile(bullet));
+    if (activeStage === "shrine") shrineStage.drawBolts(ctx, visibleWorldRect(0), { quality: perfMode.level });
     for (const t of texts) if (isInDrawRange(t, 150, zoom)) drawText(t);
     ctx.restore();
+    if (state === "playing" && activeStage === "shrine") shrineStage.weather(ctx, W, H, { quality: perfMode.level, reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches });
+    else if (state === "playing" && perfMode.level < 2) drawAtmosphere();
     drawTreasureRadar();
     drawVignette();
     drawClearTransition();
     drawFuryCutin();
+    if (impactPulse > 0) {
+      ctx.fillStyle = `rgba(255, 233, 194, ${impactPulse * 0.18})`;
+      ctx.fillRect(0, 0, W, H);
+    }
     drawDebugOverlay();
+  }
+
+  function drawAtmosphere() {
+    ctx.save();
+    const count = perfMode.level ? 12 : 26;
+    for (let i = 0; i < count; i++) {
+      const x = ((i * 193.7 + elapsed * (8 + i % 4) - camera.x * 0.15) % (W + 60) + W + 60) % (W + 60) - 30;
+      const y = ((i * 117.3 - elapsed * (7 + i % 3) - camera.y * 0.1) % (H + 60) + H + 60) % (H + 60) - 30;
+      ctx.globalAlpha = 0.12 + (Math.sin(elapsed * 1.2 + i) + 1) * 0.12;
+      ctx.fillStyle = i % 3 ? "#e4ba80" : "#c2f7e3";
+      ctx.beginPath(); ctx.ellipse(x, y, i % 3 ? 2.5 : 1.4, 1.2, elapsed * 0.2 + i, 0, TAU); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  function captureMotionFrame() {
+    for (const actor of [player, camera, ...enemies, ...projectiles, ...enemyBullets]) {
+      motionPrevious.set(actor, { x: actor.x, y: actor.y });
+    }
+  }
+
+  function advanceCharacterMotion(dt) {
+    const previous = motionPrevious.get(player) || player;
+    const dx = player.x - previous.x, dy = player.y - previous.y;
+    const distance = Math.hypot(dx, dy);
+    heroMotion.speed = distance / dt;
+    if (evade.life <= 0 && distance < 18) heroMotion.distance += distance;
+    if (evade.life > 0 && Math.abs(Math.cos(evade.angle)) > 0.16) {
+      heroMotion.facing = Math.cos(evade.angle) > 0 ? -1 : 1;
+    } else if (heroMotion.attackAge < 0.4) {
+      if (Math.abs(Math.cos(heroMotion.attackAngle)) > 0.16) heroMotion.facing = Math.cos(heroMotion.attackAngle) > 0 ? -1 : 1;
+    } else if (Math.abs(dx) > 0.2) heroMotion.facing = dx > 0 ? -1 : 1;
+    heroMotion.attackAge += dt;
+    heroMotion.hurtAge = player.hp < heroMotion.hp ? 0 : heroMotion.hurtAge + dt;
+    heroMotion.hp = player.hp;
+    const foot = Math.floor(heroMotion.distance / 48);
+    if (foot !== heroMotion.foot && heroMotion.speed > 25 && evade.life <= 0 && perfMode.level === 0) {
+      burst(player.x + (foot % 2 ? 7 : -7), player.y + 22, "#a8997e", 2, 1);
+    }
+    heroMotion.foot = foot;
+    for (const enemy of enemies) {
+      const previousEnemy = motionPrevious.get(enemy) || enemy;
+      const step = Math.hypot(enemy.x - previousEnemy.x, enemy.y - previousEnemy.y);
+      enemy.marchDistance = (enemy.marchDistance || 0) + step;
+      enemy.motionSpeed = step / dt;
+    }
+  }
+
+  function interpolatedPosition(actor) {
+    const previous = motionPrevious.get(actor);
+    if (!previous || state !== "playing" || Math.hypot(actor.x - previous.x, actor.y - previous.y) > 100) return actor;
+    const alpha = clamp(frameCarry / FRAME_MS, 0, 1);
+    return { x: previous.x + (actor.x - previous.x) * alpha, y: previous.y + (actor.y - previous.y) * alpha };
+  }
+
+  function drawInterpolated(actor, drawActor) {
+    const visual = interpolatedPosition(actor);
+    ctx.save(); ctx.translate(visual.x - actor.x, visual.y - actor.y);
+    drawActor(); ctx.restore();
+  }
+
+  function motionTime() {
+    return elapsed + (state === "playing" ? frameCarry / 1000 : 0);
+  }
+
+  function drawCombatReadability() {
+    ctx.save();
+    for (const trail of evade.trails) {
+      ctx.globalAlpha = trail.life * 1.6;
+      ctx.fillStyle = "#9bf0ef";
+      ctx.beginPath(); ctx.ellipse(trail.x, trail.y, 20, 9, 0, 0, TAU); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    for (const enemy of enemies) {
+      if (!isInDrawRange(enemy, 220, getCameraZoom())) continue;
+      if (enemy.windup > 0) {
+        ctx.save(); ctx.translate(enemy.x, enemy.y); ctx.rotate(enemy.rushAngle);
+        const charge = 1 - enemy.windup / (enemy.windupMax || 0.65);
+        ctx.fillStyle = `rgba(255,70,55,${0.12 + charge * 0.22})`;
+        ctx.strokeStyle = "#ffc28b"; ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(0, -18); ctx.lineTo(165, -18); ctx.lineTo(190, 0); ctx.lineTo(165, 18); ctx.lineTo(0, 18); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.restore();
+      }
+
+    }
+    ctx.strokeStyle = evade.life > 0 ? "#d4fff6" : "rgba(174,234,221,0.5)";
+    ctx.lineWidth = 2;
+    const visual = interpolatedPosition(player);
+    ctx.beginPath(); ctx.ellipse(visual.x, visual.y + 23, 23, 7, 0, 0, TAU); ctx.stroke();
+    ctx.restore();
   }
 
   function drawDebugOverlay() {
@@ -6714,6 +7166,9 @@
   }
 
   function drawBackground() {
+    if (activeStage === "shrine") {
+      ctx.fillStyle = "#142127";ctx.fillRect(0,0,W,H);return;
+    }
     const bg = ctx.createLinearGradient(0, 0, W, H);
     bg.addColorStop(0, "#0b0707");
     bg.addColorStop(0.46, "#17100d");
@@ -6737,6 +7192,11 @@
   function drawArena() {
     ctx.save();
     const visible = visibleWorldRect(96);
+    if (activeStage === "shrine") {
+      shrineStage.drawGround(ctx, visible, MAP_RECT, { quality: perfMode.level });
+      ctx.restore();
+      return;
+    }
     if (stageImage.complete && stageImage.naturalWidth) {
       const vx = clamp(visible.x, MAP_RECT.x, MAP_RECT.x + MAP_RECT.w);
       const vy = clamp(visible.y, MAP_RECT.y, MAP_RECT.y + MAP_RECT.h);
@@ -6771,7 +7231,11 @@
   function drawPlayer() {
     ctx.save();
     ctx.translate(player.x, player.y);
-    if (player.invuln > 0) ctx.globalAlpha = 0.64 + Math.sin(elapsed * 40) * 0.22;
+    ctx.save();
+    ctx.fillStyle = "rgba(3,7,10,0.32)";
+    ctx.beginPath(); ctx.ellipse(0, 24, evade.life > 0 ? 27 : 20, 6, 0, 0, TAU); ctx.fill();
+    ctx.restore();
+    if (player.invuln > 0) ctx.globalAlpha = 0.88;
     if (player.fury > 0) {
       ctx.save();
       ctx.globalCompositeOperation = "lighter";
@@ -6927,29 +7391,42 @@
       }
       ctx.restore();
     }
-    const moving = keys.has("KeyW") || keys.has("ArrowUp") || keys.has("KeyS") || keys.has("ArrowDown") || keys.has("KeyA") || keys.has("ArrowLeft") || keys.has("KeyD") || keys.has("ArrowRight") || pointer.active;
+    const moving = heroMotion.speed > 8 && evade.life <= 0;
     const isDenkichi = player.character === "denkichi";
-    const heroKey = isDenkichi ? "denkichi" : "player";
-    const heroFrames = isDenkichi ? (moving ? [0, 1, 2, 1] : [0]) : player.poseTimer > 0 ? [3] : moving ? [0, 1, 2, 1] : [0];
-    const hero = getCharacterFrame(heroKey, moving ? 4.4 : 1, 0, heroFrames);
+    const extraTime = state === "playing" ? frameCarry / 1000 : 0;
+    const attackAge = heroMotion.attackAge + extraTime;
+    const attacking = attackAge < 0.4;
+    const gait = heroMotion.distance / 96 * TAU + (moving ? extraTime * Math.min(heroMotion.speed, player.speed) / 96 * TAU : 0);
+    const hero = getCharacterFrame(isDenkichi ? "denkichi" : "player", 1, 0, moving ? [0,1,2,1] : [0], gait / TAU * 4);
+    const lift = moving ? -Math.abs(Math.sin(gait)) * 0.7 : Math.sin(motionTime() * 2.4) * 0.35;
+    const attackDrive = attacking ? attackAge < 0.1 ? -2 * Math.sin(attackAge / 0.1 * Math.PI / 2) : 5 * Math.sin(clamp((attackAge - 0.1) / 0.3, 0, 1) * Math.PI) : 0;
+    ctx.save();
+    ctx.translate(Math.cos(heroMotion.attackAngle) * attackDrive, lift + Math.sin(heroMotion.attackAngle) * attackDrive * 0.4);
+    if (evade.life > 0) ctx.rotate(Math.cos(evade.angle) * 0.12);
+    if (heroMotion.hurtAge < 0.14) {
+      ctx.translate(-Math.cos(player.dir) * (1 - heroMotion.hurtAge / 0.14) * 3, 0);
+      if (perfMode.level < 2) ctx.filter = `brightness(${1.15 + (1 - heroMotion.hurtAge / 0.14) * 0.8})`;
+    }
     if (drawDenkichiAttackPose()) {
       drawDenkichiHandGlow();
+    } else if (!isDenkichi && isImageReady(heroMotionSheet)) {
+      let frame;
+      if (evade.life > 0) frame = 2;
+      else if (attacking) {
+        const boundaries = [0.035,0.075,0.1,0.145,0.2,0.265,0.33,0.4];
+        frame = 8 + Math.max(0, boundaries.findIndex(end => attackAge < end));
+      } else frame = moving ? Math.floor(gait / TAU * 8) % 8 : 0;
+      if (heroMotion.facing < 0) ctx.scale(-1, 1);
+      const cellW = heroMotionSheet.naturalWidth / 4, cellH = heroMotionSheet.naturalHeight / 4;
+      const height = 112;
+      ctx.drawImage(heroMotionSheet, frame % 4 * cellW, Math.floor(frame / 4) * cellH, cellW, cellH, -height / 2, -height + player.r * 1.22 + 8, height, height);
     } else if (isImageReady(hero)) {
-      let flipHero = Math.cos(player.dir) > 0;
-      const height = isDenkichi ? 104 : player.poseTimer > 0 ? 104 : 96;
-      const step = moving ? Math.abs(Math.sin(elapsed * 6.1)) * 1.2 : Math.sin(elapsed * 2.4) * 0.35;
-      const lean = moving ? Math.sin(elapsed * 6.1) * 0.01 : Math.sin(elapsed * 2.2) * 0.006;
-      ctx.save();
-      ctx.translate(0, step);
-      ctx.rotate(flipHero ? -lean : lean);
-      if (flipHero) ctx.scale(-1, 1);
-      drawUprightSprite(hero, height, player.r * 1.22);
-      ctx.restore();
-      drawDenkichiHandGlow();
+      if (heroMotion.facing < 0) ctx.scale(-1, 1);
+      drawUprightSprite(hero, isDenkichi ? 104 : 96, player.r * 1.22);
     } else {
-      ctx.rotate(player.dir);
       ctx.drawImage(spriteCache.player, -48, -48, 96, 96);
     }
+    ctx.restore();
     ctx.restore();
   }
 
@@ -6989,27 +7466,50 @@
     ctx.restore();
   }
 
+  function getHeavyVisual(enemy) {
+    const pose = heavyMotion.pose(enemy, state === "playing" ? frameCarry / 1000 : 0);
+    if (activeStage === "shrine") return { image: shrineStage.image(enemy.type), pose };
+    const sheet = heavySheets[enemy.type];
+    if (isImageReady(sheet) && pose.mode !== "cast") return { image: sheet, columns: 4, rows: 4, index: pose.frame, pose };
+    if ((enemy.type === "armored" || enemy.type === "boss") && isImageReady(heavySheets.support)) return { image: heavySheets.support, columns: 4, rows: 2, index: pose.fallback + (enemy.type === "boss" ? 4 : 0), pose, facesRight:enemy.type === "boss" || pose.fallback !== 3 };
+    const frames = characterAnimations[enemy.spriteKey];
+    return { image: frames?.[pose.fallback] || characterBaseSprites[enemy.spriteKey], pose, facesRight:enemy.type === "boss" || enemy.type === "armored" && pose.fallback !== 3 };
+  }
+
   function drawEnemy(enemy) {
     ctx.save();
     ctx.translate(enemy.x, enemy.y);
     const isBoss = enemy.type === "boss" || enemy.type === "oniElite" || enemy.type === "overlord";
     const size = isBoss ? enemy.r * 2.7 : enemy.r * 3.8;
     ctx.globalAlpha = d2(enemy, player) > sqr(Math.max(W, H) * 0.88) ? 0.58 : 1;
-    const sprite = getCharacterFrame(enemy.spriteKey, getEnemyFrameRate(enemy), enemy.phase, getEnemyFrameSequence(enemy));
+    const heavyVisual = heavyMotion.isHeavy(enemy) ? getHeavyVisual(enemy) : null;
+    const walkAlpha = state === "playing" ? frameCarry / FRAME_MS : 1;
+    const walkVisual = activeStage === "shrine" ? shrineStage.walkingVisual(enemy,walkAlpha) : sengokuWalk.visual(enemy,walkAlpha);
+    const sheetVisual = walkVisual || heavyVisual;
+    const sprite = walkVisual?.image || heavyVisual?.image || (activeStage === "shrine" ? shrineStage.image(enemy.type) : getCharacterFrame(enemy.spriteKey, 1, enemy.phase, getEnemyFrameSequence(enemy), (enemy.type === "wraith" || enemy.type === "tengu") ? motionTime() * getEnemyFrameRate(enemy) : (enemy.marchDistance || 0) / (enemy.type === "armored" ? 110 : 76) * getEnemyFrameSequence(enemy).length));
     if (isImageReady(sprite)) {
       const height = isBoss ? enemy.r * 4.25 : enemy.r * 4.55;
       const bottomOffset = enemy.r * 1.35;
       if (perfMode.level < 2 || isImportantEnemy(enemy)) drawEnemyGroundShadow(enemy);
       ctx.save();
-      applyEnemyMotion(enemy);
-      const pulse = 1 + enemy.hit * 1.25 + Math.sin(elapsed * 4 + enemy.phase) * 0.035;
+      applyEnemyMotion(enemy, walkVisual);
+      const pulse = heavyVisual || walkVisual ? 1 : 1 + Math.sin(motionTime() * 2 + enemy.phase) * 0.004;
       ctx.scale(pulse, pulse);
-      if (enemy.x < player.x) ctx.scale(-1, 1);
-      if (perfMode.level < 2 || isImportantEnemy(enemy)) drawEnemyMotionTrail(enemy, sprite, height, bottomOffset);
-      drawUprightSprite(sprite, height, bottomOffset);
+      const facingRight = heavyVisual ? heavyVisual.pose.flip : walkVisual && typeof walkVisual.facingRight === "boolean" ? walkVisual.facingRight : enemy.x < player.x;
+      if (facingRight !== !!(walkVisual ? walkVisual.facesRight : heavyVisual?.facesRight)) ctx.scale(-1, 1);
+      if (!heavyVisual && !walkVisual && activeStage !== "shrine" && (perfMode.level < 2 || isImportantEnemy(enemy))) drawEnemyMotionTrail(enemy, sprite, height, bottomOffset);
+      const highlight = heavyVisual ? heavyVisual.pose.hurt * 0.3 : enemy.hit * 5;
+      if (activeStage !== "shrine" && !walkVisual && highlight > 0.02 && perfMode.level < 2) ctx.filter = `brightness(${1 + highlight})`;
+      if (sheetVisual?.columns) {
+        const cw = sprite.naturalWidth / sheetVisual.columns, ch = sprite.naturalHeight / sheetVisual.rows;
+        const size = height * 1.08;
+        const foot = enemy.r * 1.2;
+        ctx.drawImage(sprite, sheetVisual.index % sheetVisual.columns * cw, Math.floor(sheetVisual.index / sheetVisual.columns) * ch, cw, ch, -size / 2, -size + foot + size * (1 - (sheetVisual.baseline || 476 / 512)), size, size);
+      } else drawUprightSprite(sprite, height, bottomOffset);
+      if (activeStage === "shrine" && !walkVisual && highlight > 0.02) shrineStage.drawHit(ctx, enemy.type, height, bottomOffset, highlight);
       ctx.restore();
     } else {
-      const pulse = 1 + enemy.hit * 1.25 + Math.sin(elapsed * 4 + enemy.phase) * 0.035;
+      const pulse = heavyVisual || walkVisual ? 1 : 1 + Math.sin(motionTime() * 2 + enemy.phase) * 0.004;
       const fallback = spriteCache[enemy.sprite] || spriteCache.boss;
       ctx.scale(pulse, pulse);
       drawImageRounded(fallback, -size / 2, -size / 2, size, size);
@@ -7024,7 +7524,12 @@
   }
 
   function drawEnemyGroundShadow(enemy) {
-    if (enemy.type === "wraith" || enemy.type === "tengu") return;
+    if (heavyMotion.isHeavy(enemy) && enemy.heavyStepAge < 0.2) {
+      const t = enemy.heavyStepAge / 0.2;
+      ctx.save();ctx.strokeStyle = "#c4af8c";ctx.globalAlpha *= (1-t)*0.26;ctx.lineWidth=1.2;
+      ctx.beginPath();ctx.ellipse(0,enemy.r*1.2,enemy.r*(0.75+t*.6),enemy.r*(.2+t*.1),0,0,TAU);ctx.stroke();ctx.restore();
+    }
+    if (enemy.type === "wraith" || (enemy.type === "tengu" && activeStage !== "shrine")) return;
     ctx.save();
     ctx.globalAlpha *= enemy.type === "armored" || enemy.type === "oniElite" || enemy.type === "overlord" ? 0.32 : 0.22;
     ctx.fillStyle = "#050407";
@@ -7034,32 +7539,40 @@
     ctx.restore();
   }
 
-  function applyEnemyMotion(enemy) {
-    const t = elapsed + enemy.phase;
-    if (enemy.type === "wraith") {
-      ctx.translate(Math.sin(t * 1.8) * 1.1, Math.sin(t * 2.2) * 3.4 - 3);
-      ctx.rotate(Math.sin(t * 2.0) * 0.018);
-    } else if (enemy.type === "ashigaru") {
-      ctx.translate(Math.sin(t * 5.2) * 0.7, Math.abs(Math.sin(t * 5.2)) * 1.2);
-      ctx.rotate(Math.sin(t * 5.2) * 0.012);
-    } else if (enemy.type === "tengu") {
-      ctx.translate(Math.sin(t * 2.6) * 2.2, Math.sin(t * 3.0) * 3.2 - 4);
-      ctx.rotate(Math.sin(t * 2.8) * 0.026);
-    } else if (enemy.type === "shinobi") {
-      ctx.translate(Math.sin(t * 6.5) * 1.4, Math.cos(t * 5.5) * 0.9);
-      ctx.rotate(Math.sin(t * 6.5) * 0.018);
-    } else if (enemy.type === "senryoThief") {
-      ctx.translate(Math.sin(t * 9.0) * 2.0, Math.abs(Math.sin(t * 9.0)) * 2.2);
-      ctx.rotate(Math.sin(t * 8.5) * 0.028);
-    } else if (enemy.type === "armored") {
-      ctx.translate(0, Math.abs(Math.sin(t * 3.2)) * 1.4);
-      ctx.rotate(Math.sin(t * 3.2) * 0.008);
-    } else if (enemy.type === "oniElite" || enemy.type === "boss") {
-      ctx.translate(Math.sin(t * 2.0) * 0.8, Math.abs(Math.sin(t * 2.4)) * 1.2);
-      ctx.rotate(Math.sin(t * 2.0) * 0.01);
-    } else if (enemy.type === "overlord") {
-      ctx.translate(Math.sin(t * 1.4) * 1.1, Math.sin(t * 1.8) * 1.6 - 2);
-      ctx.rotate(Math.sin(t * 1.4) * 0.008);
+  function applyEnemyMotion(enemy, walkVisual = null) {
+    if (heavyMotion.isHeavy(enemy)) {
+      const pose = heavyMotion.pose(enemy, state === "playing" ? frameCarry / 1000 : 0);
+      const height = enemy.r * 4.25, foot = enemy.r * 1.2;
+      ctx.translate(0, foot);ctx.rotate(pose.lean);ctx.scale(1,1-pose.sink/height);ctx.translate(0,-foot);
+      if (pose.hurt > 0) ctx.translate(Math.cos(enemy.hitAngle || 0) * pose.hurt * 0.8, 0);
+      return;
+    }
+    if (activeStage === "shrine") {
+      shrineStage.applyMotion(ctx, enemy, motionTime(), state === "playing" ? frameCarry / FRAME_MS : 1);
+      return;
+    }
+    if (walkVisual) {
+      sengokuWalk.applyMotion(ctx, enemy, state === "playing" ? frameCarry / FRAME_MS : 1);
+      return;
+    }
+    const t = motionTime() + enemy.phase;
+    if (enemy.type === "wraith" || enemy.type === "tengu") {
+      const flying = enemy.type === "tengu";
+      ctx.translate(Math.sin(t * 1.8) * (flying ? 1.8 : 1), Math.sin(t * 2.2) * (flying ? 3.2 : 2.6) - 3);
+      ctx.rotate(Math.sin(t * 1.6) * 0.014);
+    } else {
+      const heavy = ["armored", "oniElite", "boss", "overlord"].includes(enemy.type);
+      const gait = (enemy.marchDistance || 0) / (heavy ? 110 : 76) * TAU + enemy.phase;
+      if ((enemy.motionSpeed || 0) > 5 && !enemy.windup) {
+        ctx.translate(Math.sin(gait) * (heavy ? 0.5 : 0.8), -Math.abs(Math.sin(gait)) * (heavy ? 0.7 : 1.7));
+      }
+      if (enemy.windup > 0) {
+        const charge = clamp(1 - enemy.windup / 0.65, 0, 1);
+        ctx.translate(-Math.cos(enemy.rushAngle) * charge * 3, charge * 2);
+      }
+    }
+    if (enemy.hit > 0) {
+      ctx.translate(Math.cos(enemy.hitAngle || 0) * enemy.hit * 20, Math.sin(enemy.hitAngle || 0) * enemy.hit * 12);
     }
   }
 
@@ -7120,11 +7633,11 @@
     return img && img.complete && img.naturalWidth > 0;
   }
 
-  function getCharacterFrame(key, fps, phase = 0, sequence = null) {
+  function getCharacterFrame(key, fps, phase = 0, sequence = null, clock = motionTime()) {
     const frames = characterAnimations[key];
     if (frames && frames.length) {
       const order = sequence && sequence.length ? sequence : frames.map((_, i) => i);
-      const index = order[Math.floor((elapsed * fps + phase) % order.length)] % frames.length;
+      const index = order[Math.floor((clock * fps + phase) % order.length)] % frames.length;
       if (isImageReady(frames[index])) return frames[index];
       const ready = order.map(i => frames[i % frames.length]).find(isImageReady) || frames.find(isImageReady);
       if (ready) return ready;
@@ -7163,284 +7676,11 @@
   }
 
   function drawProjectile(p) {
-    ctx.save();
-    ctx.translate(p.x, p.y);
-    ctx.rotate(Math.atan2(p.vy, p.vx));
-    ctx.globalCompositeOperation = "lighter";
-    ctx.shadowColor = p.color;
-    const crowdedProjectiles = projectiles.length > 42;
-    if (perfMode.level >= 2 && p.kind !== "laser" && p.kind !== "sickle" && p.kind !== "eclipseBullet") {
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = p.color;
-      if (p.kind === "arrow" || p.kind === "heavenArrow") {
-        ctx.fillRect(-18, -2, 32, 4);
-        ctx.beginPath();
-        ctx.moveTo(20, 0);
-        ctx.lineTo(8, -7);
-        ctx.lineTo(10, 0);
-        ctx.lineTo(8, 7);
-        ctx.closePath();
-        ctx.fill();
-      } else if (p.kind === "shuriken" || p.kind === "shadowShuriken") {
-        ctx.rotate(elapsed * 10);
-        ctx.beginPath();
-        for (let i = 0; i < 8; i++) {
-          const r = i % 2 ? p.r * 0.55 : p.r * 1.45;
-          const a = i * TAU / 8;
-          const x = Math.cos(a) * r;
-          const y = Math.sin(a) * r;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.fill();
-      } else if (p.kind === "thunder") {
-        ctx.beginPath();
-        ctx.arc(0, 0, p.r * 1.05, 0, TAU);
-        ctx.fill();
-      } else if (p.kind === "eclipseBullet") {
-        ctx.beginPath();
-        ctx.ellipse(0, 0, p.r * 2.35, p.r * 0.86, 0, 0, TAU);
-        ctx.fill();
-        ctx.fillStyle = "rgba(255,255,255,0.82)";
-        ctx.beginPath();
-        ctx.arc(p.r * 0.8, 0, p.r * 0.28, 0, TAU);
-        ctx.fill();
-      } else {
-        ctx.beginPath();
-        ctx.ellipse(0, 0, p.r * 2.15, p.r * 0.66, 0, 0, TAU);
-        ctx.fill();
-      }
-      ctx.restore();
-      return;
-    }
-    ctx.shadowBlur = performanceGlow(crowdedProjectiles ? 8 : 20);
-    const g = ctx.createLinearGradient(-18, 0, 20, 0);
-    g.addColorStop(0, "rgba(255,255,255,0)");
-    g.addColorStop(0.34, p.color);
-    g.addColorStop(1, "#fff8d8");
-    ctx.fillStyle = g;
-    if (p.kind === "laser") {
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = performanceGlow(crowdedProjectiles ? 12 : 28);
-      ctx.strokeStyle = "rgba(255,255,255,0.96)";
-      ctx.lineWidth = Math.max(4, p.r * 0.42);
-      ctx.beginPath();
-      ctx.moveTo(-34, 0);
-      ctx.lineTo(46, 0);
-      ctx.stroke();
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = Math.max(12, p.r * 1.25);
-      ctx.globalAlpha *= 0.76;
-      ctx.beginPath();
-      ctx.moveTo(-52, 0);
-      ctx.lineTo(42, 0);
-      ctx.stroke();
-      ctx.globalAlpha *= 0.72;
-      ctx.strokeStyle = "rgba(255,255,255,0.68)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-22, -p.r * 0.85);
-      ctx.lineTo(28, -p.r * 0.16);
-      ctx.moveTo(-22, p.r * 0.85);
-      ctx.lineTo(28, p.r * 0.16);
-      ctx.stroke();
-    } else if (p.kind === "thunder") {
-      const radius = p.r * (1.04 + Math.sin(elapsed * 18) * 0.04);
-      const orb = ctx.createRadialGradient(-radius * 0.28, -radius * 0.32, 1, 0, 0, radius * 1.28);
-      orb.addColorStop(0, "#ffffff");
-      orb.addColorStop(0.34, p.color);
-      orb.addColorStop(0.72, "rgba(88, 243, 228, 0.58)");
-      orb.addColorStop(1, "rgba(88, 243, 228, 0)");
-      ctx.fillStyle = orb;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius * 1.22, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255,255,255,0.72)";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, radius * 0.72, 0, TAU);
-      ctx.stroke();
-    } else if (p.kind === "eclipseBullet") {
-      ctx.shadowColor = "#ff304f";
-      ctx.shadowBlur = performanceGlow(crowdedProjectiles ? 14 : 34);
-      ctx.fillStyle = "#ff4058";
-      ctx.beginPath();
-      ctx.ellipse(0, 0, p.r * 2.9, p.r * 0.86, 0, 0, TAU);
-      ctx.fill();
-      ctx.strokeStyle = "rgba(255, 223, 90, 0.78)";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(-p.r * 2.2, -p.r * 0.52);
-      ctx.quadraticCurveTo(0, -p.r * 1.25, p.r * 2.55, 0);
-      ctx.quadraticCurveTo(0, p.r * 1.25, -p.r * 2.2, p.r * 0.52);
-      ctx.stroke();
-      ctx.fillStyle = "#fff8d8";
-      ctx.beginPath();
-      ctx.arc(p.r * 1.35, 0, p.r * 0.33, 0, TAU);
-      ctx.fill();
-    } else if (p.kind === "crane") {
-      ctx.beginPath();
-      ctx.moveTo(18, 0);
-      ctx.lineTo(-10, -10);
-      ctx.lineTo(-4, 0);
-      ctx.lineTo(-10, 10);
-      ctx.closePath();
-      ctx.fill();
-    } else if (p.kind === "arrow" || p.kind === "heavenArrow") {
-      if (p.kind === "heavenArrow") {
-        ctx.shadowColor = "#ffd35a";
-        ctx.shadowBlur = performanceGlow(crowdedProjectiles ? 10 : 26);
-        ctx.strokeStyle = "rgba(255, 231, 130, 0.62)";
-        ctx.lineWidth = 8;
-        ctx.beginPath();
-        ctx.moveTo(-28, 0);
-        ctx.lineTo(22, 0);
-        ctx.stroke();
-      }
-      ctx.fillRect(-22, -2, 38, 4);
-      ctx.beginPath();
-      ctx.moveTo(24, 0);
-      ctx.lineTo(8, -8);
-      ctx.lineTo(12, 0);
-      ctx.lineTo(8, 8);
-      ctx.closePath();
-      ctx.fill();
-    } else if (p.kind === "shuriken" || p.kind === "shadowShuriken") {
-      ctx.rotate(elapsed * (p.kind === "shadowShuriken" ? 16 : 12));
-      if (p.kind === "shadowShuriken") {
-        ctx.strokeStyle = "rgba(143, 108, 255, 0.46)";
-        ctx.lineWidth = 5;
-        ctx.beginPath();
-        ctx.arc(0, 0, p.r * 2.15, 0, TAU);
-        ctx.stroke();
-      }
-      ctx.beginPath();
-      for (let i = 0; i < 8; i++) {
-        const r = i % 2 ? p.r * 0.58 : p.r * 1.65;
-        const a = i * TAU / 8;
-        const x = Math.cos(a) * r;
-        const y = Math.sin(a) * r;
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = "#fff8d8";
-      ctx.beginPath();
-      ctx.arc(0, 0, p.r * 0.34, 0, TAU);
-      ctx.fill();
-    } else if (p.kind === "sickle") {
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = 7;
-      ctx.beginPath();
-      ctx.arc(0, 0, p.r * 1.5, -0.9, 0.9);
-      ctx.stroke();
-      ctx.strokeStyle = "#fff8d8";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, 0, p.r * 1.5 + 5, -0.7, 0.7);
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.ellipse(0, 0, p.r * 2.6, p.r * 0.78, 0, 0, TAU);
-      ctx.fill();
-    }
-    ctx.restore();
+    combatVfx.projectile(p, motionTime());
   }
 
   function drawSlash(slash) {
-    const t = 1 - slash.life / slash.max;
-    const alpha = Math.max(0, 1 - t);
-    const core = slash.color || "#fff0a3";
-    const edge = slash.edgeColor || "#d82936";
-    const sakura = slash.kind === "sakuraMoon";
-    const eclipse = slash.kind === "eclipseFang";
-    const sweep = 0.82 + Math.sin(t * Math.PI) * 0.18;
-    const inner = slash.r * 0.34;
-    const outer = slash.r * (1.02 + t * 0.08);
-    const tip = slash.r * (1.03 + t * 0.1);
-    ctx.save();
-    ctx.translate(slash.x, slash.y);
-    ctx.rotate(slash.angle);
-    ctx.globalCompositeOperation = "lighter";
-
-    ctx.globalAlpha = alpha * 0.28;
-    const aura = ctx.createRadialGradient(0, 0, inner * 0.2, 0, 0, outer);
-    aura.addColorStop(0, "rgba(255, 245, 190, 0)");
-    aura.addColorStop(0.46, slash.color ? "rgba(88, 243, 228, 0.18)" : "rgba(255, 223, 90, 0.16)");
-    aura.addColorStop(0.74, slash.color ? "rgba(255, 48, 79, 0.16)" : "rgba(216, 41, 54, 0.18)");
-    aura.addColorStop(1, "rgba(255, 255, 255, 0)");
-    ctx.fillStyle = aura;
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, outer, -sweep, sweep);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.globalAlpha = alpha * 0.94;
-    ctx.shadowColor = edge;
-    ctx.shadowBlur = performanceGlow(slash.color ? 38 : 30);
-    ctx.lineCap = "round";
-    const blade = ctx.createLinearGradient(inner, -outer * 0.2, outer, outer * 0.14);
-    blade.addColorStop(0, "rgba(255,255,255,0.08)");
-    blade.addColorStop(0.34, core);
-    blade.addColorStop(0.68, "#ffffff");
-    blade.addColorStop(1, edge);
-    ctx.strokeStyle = blade;
-    ctx.lineWidth = slash.color ? 28 : 22;
-    ctx.beginPath();
-    ctx.arc(0, 0, tip, -sweep * 0.92, sweep * 0.92);
-    ctx.stroke();
-
-    ctx.globalAlpha = alpha;
-    ctx.shadowColor = "#fff8d8";
-    ctx.shadowBlur = performanceGlow(18);
-    ctx.strokeStyle = "rgba(255, 255, 245, 0.96)";
-    ctx.lineWidth = slash.color ? 8 : 6;
-    ctx.beginPath();
-    ctx.arc(0, 0, tip + 8, -sweep * 0.72, sweep * 0.72);
-    ctx.stroke();
-
-    ctx.fillStyle = "#fff2a8";
-    ctx.shadowColor = "#ff3b4f";
-    ctx.shadowBlur = performanceGlow(12);
-    const sparkCount = perfMode.level >= 2 ? 3 : perfMode.level >= 1 ? 5 : 7;
-    for (let i = 0; i < sparkCount; i++) {
-      const a = -sweep + (i / Math.max(1, sparkCount - 1)) * sweep * 2;
-      const r = tip + 8 + Math.sin(i * 2.1 + t * 5) * 12;
-      ctx.globalAlpha = alpha * (0.32 + i * 0.045);
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * r, Math.sin(a) * r, 2.2 + (i % 3), 0, TAU);
-      ctx.fill();
-    }
-    if (sakura || eclipse) {
-      const motifCount = perfMode.level >= 2 ? 4 : 8;
-      ctx.fillStyle = sakura ? "#ffd0e5" : "#ffdf5a";
-      ctx.shadowColor = sakura ? "#ff5f9c" : "#ff304f";
-      ctx.shadowBlur = performanceGlow(12);
-      for (let i = 0; i < motifCount; i++) {
-        const a = -sweep * 0.86 + (i / Math.max(1, motifCount - 1)) * sweep * 1.72;
-        const r = tip * (0.72 + 0.26 * ((i % 3) / 2));
-        ctx.save();
-        ctx.translate(Math.cos(a) * r, Math.sin(a) * r);
-        ctx.rotate(a + elapsed * 1.2);
-        ctx.globalAlpha = alpha * 0.72;
-        ctx.beginPath();
-        if (sakura) {
-          ctx.ellipse(0, 0, 5, 2.6, 0, 0, TAU);
-        } else {
-          ctx.moveTo(0, -5);
-          ctx.lineTo(4, 0);
-          ctx.lineTo(0, 5);
-          ctx.lineTo(-4, 0);
-          ctx.closePath();
-        }
-        ctx.fill();
-        ctx.restore();
-      }
-    }
-    ctx.restore();
+    combatVfx.slash(slash);
   }
 
   function drawGem(gem) {
@@ -7618,45 +7858,11 @@
   }
 
   function drawParticle(p) {
-    const a = clamp(p.life / p.max, 0, 1);
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = a;
-    ctx.fillStyle = p.color;
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = performanceGlow(14);
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.r * (1.35 - a * 0.35), 0, TAU);
-    ctx.fill();
-    ctx.restore();
+    combatVfx.particle(p);
   }
 
   function drawShockwave(wave) {
-    const t = 1 - wave.life / wave.max;
-    ctx.save();
-    ctx.globalCompositeOperation = "lighter";
-    ctx.globalAlpha = 1 - t;
-    ctx.strokeStyle = wave.color;
-    ctx.lineWidth = (wave.kind === "warThunder" ? 7 : 5) * (1 - t);
-    ctx.shadowColor = wave.color;
-    ctx.shadowBlur = performanceGlow(wave.kind === "warThunder" ? 28 : 18);
-    ctx.beginPath();
-    ctx.arc(wave.x, wave.y, wave.r + t * 145, 0, TAU);
-    ctx.stroke();
-    if (wave.kind === "warThunder" && perfMode.level < 2) {
-      ctx.strokeStyle = "rgba(255, 248, 210, 0.72)";
-      ctx.lineWidth = 2 * (1 - t);
-      for (let i = 0; i < 8; i++) {
-        const a = i * TAU / 8 + t * 0.8;
-        const inner = wave.r + t * 78;
-        const outer = wave.r + t * 145;
-        ctx.beginPath();
-        ctx.moveTo(wave.x + Math.cos(a) * inner, wave.y + Math.sin(a) * inner);
-        ctx.lineTo(wave.x + Math.cos(a + 0.08) * outer, wave.y + Math.sin(a + 0.08) * outer);
-        ctx.stroke();
-      }
-    }
-    ctx.restore();
+    combatVfx.shockwave(wave);
   }
 
   function drawText(item) {
@@ -7813,13 +8019,23 @@
       const delta = now - last;
       last = now;
       updatePerformanceMode(delta);
-      frameCarry += Math.min(delta, FRAME_MS * 2);
-      if (frameCarry >= FRAME_MS) {
-        frameCarry = 0;
-        const dt = FRAME_MS / 1000;
-        updateGamepadInput();
-        update(dt);
+      frameCarry += Math.min(Math.max(0, delta), 200);
+      updateGamepadInput();
+      let steps = 0;
+      while (frameCarry + 0.00001 >= FRAME_MS && steps < 6) {
+        frameCarry = Math.max(0, frameCarry - FRAME_MS);
+        const wasPlaying = state === "playing";
+        if (wasPlaying) captureMotionFrame();
+        update(FRAME_MS / 1000);
+        if (wasPlaying) advanceCharacterMotion(FRAME_MS / 1000);
+        steps++;
+      }
+      // Keep simulation at 30 Hz; avoid drawing 120/144 times per second on phones.
+      const renderMs = navigator.maxTouchPoints > 0 ? 1000 / (perfMode.level >= 2 ? 30 : 60) : 0;
+      if (!renderMs || now - lastDraw + 0.01 >= renderMs) {
         draw();
+        const gap = now - lastDraw;
+        lastDraw = !Number.isFinite(gap) || gap > renderMs * 3 ? now : lastDraw + Math.floor((gap + 0.01) / renderMs) * renderMs;
       }
     } catch (error) {
       console.error("game loop recovered", error);
@@ -7906,7 +8122,36 @@
     if (touchKnob) touchKnob.style.transform = `translate(calc(-50% + ${x}px), calc(-50% + ${y}px))`;
   }
 
+  function beginFieldGesture(event) {
+    if (state !== "playing" || event.button !== 0 || fieldGestures.size >= 4) return;
+    const rect = canvas.getBoundingClientRect();
+    const zoom = getCameraZoom();
+    const view = interpolatedPosition(camera);
+    fieldGestures.set(event.pointerId, {
+      x: event.clientX, y: event.clientY, at: performance.now(), distance: 0,
+      worldX: view.x + ((event.clientX - rect.left) * W / rect.width - W / 2) / zoom,
+      worldY: view.y + ((event.clientY - rect.top) * H / rect.height - H / 2) / zoom
+    });
+  }
+
+  function moveFieldGesture(event) {
+    const gesture = fieldGestures.get(event.pointerId);
+    if (gesture) gesture.distance = Math.max(gesture.distance, Math.hypot(event.clientX - gesture.x, event.clientY - gesture.y));
+  }
+
+  function finishFieldGesture(event) {
+    const gesture = fieldGestures.get(event.pointerId);
+    if (!gesture) return false;
+    moveFieldGesture(event);
+    fieldGestures.delete(event.pointerId);
+    if (state !== "playing" || performance.now() - gesture.at > 240 || gesture.distance > 12) return false;
+    const visual = interpolatedPosition(player);
+    const dx = gesture.worldX - visual.x, dy = gesture.worldY - visual.y;
+    return tryEvade(Math.hypot(dx, dy) > 12 / getCameraZoom() ? Math.atan2(dy, dx) : player.dir);
+  }
+
   function releaseTouchStick() {
+    fieldGestures.delete(pointer.id);
     if (pointer.mode !== "stick") return;
     pointer.active = false;
     pointer.mode = "screen";
@@ -7942,7 +8187,7 @@
     if (archiveViewer && target?.closest?.(".archive-viewer-stage")) return true;
     if (state === "ending" && target?.closest?.(".ending-image-viewport")) return true;
     if (state === "records" && target?.closest?.(".records-screen")) return true;
-    if (target?.closest?.(".records-panel, .encyclopedia-panel, .shop-panel, .merchant-panel, .pause-panel, .level-panel, .result-panel")) return true;
+    if (target?.closest?.(".stage-panel, .records-panel, .encyclopedia-panel, .shop-panel, .merchant-panel, .pause-panel, .level-panel, .result-panel")) return true;
     return false;
   }
 
@@ -7975,6 +8220,7 @@
   }
 
   function currentGamepadButtons() {
+    if (state === "stageSelect") return [...stageScreen.querySelectorAll("[data-stage]"), stageCloseButton];
     if (state === "title") return [startButton, shopButton, recordsButton, encyclopediaButton, ...Array.from(characterSelect?.querySelectorAll("button") || []), ...Array.from(saveSlots?.querySelectorAll("button") || [])];
     if (state === "shop") return Array.from(shopScreen.querySelectorAll("button"));
     if (state === "merchant") return Array.from(merchantScreen.querySelectorAll("button"));
@@ -8036,7 +8282,10 @@
     if ((padPressedOnce(gamepad, 9) || padPressedOnce(gamepad, 8)) && (state === "playing" || state === "paused" || canOpenStatusFromLevel())) {
       togglePause();
     }
-    if (padPressedOnce(gamepad, 0)) clickFocusedGamepadButton();
+    if (padPressedOnce(gamepad, 0)) {
+      if (state === "playing") tryEvade();
+      else clickFocusedGamepadButton();
+    }
 
     gamepadPrev.navX = navX;
     gamepadPrev.navY = navY;
@@ -8052,6 +8301,16 @@
   document.addEventListener("dragstart", preventMobileSelection);
   document.addEventListener("contextmenu", preventMobileSelection);
   window.addEventListener("keydown", event => {
+    if ((event.code === "Space" || event.code === "ShiftLeft" || event.code === "ShiftRight") && state === "playing") {
+      event.preventDefault();
+      if (!event.repeat) tryEvade();
+      return;
+    }
+    if (event.code === "Escape" && state === "stageSelect") {
+      event.preventDefault();
+      closeStageSelect();
+      return;
+    }
     if (event.code === "KeyP" || event.code === "Escape") {
       if (state === "playing" || state === "paused" || canOpenStatusFromLevel()) {
         event.preventDefault();
@@ -8066,7 +8325,10 @@
   canvas.addEventListener("touchstart", preventFieldDoubleTapZoom, { passive: false });
   canvas.addEventListener("dblclick", event => event.preventDefault());
   canvas.addEventListener("pointerdown", event => {
-    if (state !== "playing") return;
+    if (state !== "playing" || event.button !== 0) return;
+    beginFieldGesture(event);
+    canvas.setPointerCapture?.(event.pointerId);
+    if (pointer.id !== null && pointer.id !== event.pointerId) return;
     if (event.pointerType === "touch") {
       event.preventDefault();
       canvas.setPointerCapture?.(event.pointerId);
@@ -8080,6 +8342,7 @@
     pointer.y = event.clientY;
   });
   canvas.addEventListener("pointermove", event => {
+    moveFieldGesture(event);
     if (pointer.id !== null && event.pointerId !== pointer.id) return;
     if (pointer.mode === "stick") {
       if (event.pointerType === "touch") {
@@ -8092,6 +8355,7 @@
     pointer.y = event.clientY;
   });
   window.addEventListener("pointerup", event => {
+    finishFieldGesture(event);
     if (pointer.id !== null && event.pointerId !== pointer.id) return;
     if (pointer.mode === "stick") releaseTouchStick();
     else {
@@ -8100,6 +8364,7 @@
     }
   });
   window.addEventListener("pointercancel", event => {
+    fieldGestures.delete(event.pointerId);
     if (pointer.id !== null && event.pointerId !== pointer.id) return;
     if (pointer.mode === "stick") releaseTouchStick();
     else {
@@ -8135,8 +8400,16 @@
     });
     touchStick.addEventListener("pointercancel", releaseTouchStick);
   }
-  startButton.addEventListener("click", startGame);
+  startButton.addEventListener("click", openStageSelect);
+  stageCloseButton.addEventListener("click", closeStageSelect);
+  stageScreen.addEventListener("click", event => {
+    const button = event.target.closest("[data-stage]");
+    if (button) startGame({ stage: button.dataset.stage });
+  });
   if (DEBUG_ENDGAME_TEST) startButton.textContent = "終盤テスト";
+  if (DEBUG_MODE && URL_PARAMS.has("heavyTest")) startButton.textContent = "大型モーション確認";
+  if (DEBUG_MODE && URL_PARAMS.has("shrineWalkTest")) startButton.textContent = "古社の足運び確認";
+  if (DEBUG_MODE && URL_PARAMS.has("sengokuWalkTest")) startButton.textContent = "戦国の足運び確認";
   shopButton.addEventListener("click", openShop);
   recordsButton.addEventListener("click", openRecords);
   encyclopediaButton.addEventListener("click", openEncyclopedia);
@@ -8198,6 +8471,31 @@
   pauseTitleButton?.addEventListener("click", confirmReturnToTitleFromPause);
   resumeButton.addEventListener("click", () => togglePause(false));
 
+  document.getElementById("evadeButton").addEventListener("pointerdown", event => { event.preventDefault(); tryEvade(); });
+  const effectsSlider = document.getElementById("effectsLevel");
+  try { const saved = Number(localStorage.getItem("nekoMushaEffects.v1") ?? 0.7); effectsLevel = Number.isFinite(saved) ? clamp(saved, 0, 1) : 0.7; } catch {}
+  effectsSlider.value = String(effectsLevel * 100);
+  effectsSlider.addEventListener("input", () => {
+    effectsLevel = Number(effectsSlider.value) / 100;
+    audio?.setEffectsVolume?.(effectsLevel);
+    try { localStorage.setItem("nekoMushaEffects.v1", String(effectsLevel)); } catch {}
+  });
+  const musicSlider = document.getElementById("musicLevel");
+  musicSlider.value = String(musicLevel * 100);
+  musicSlider.addEventListener("input", () => {
+    musicLevel = Number(musicSlider.value) / 100;
+    bgmTrack.volume = (state === "paused" ? 0.16 : 0.42) * musicLevel;
+    endingBgmTrack.volume = 0.48 * musicLevel;
+    try { localStorage.setItem("nekoMushaMusic.v1", String(musicLevel)); } catch {}
+  });
+  function suspendOnFocusLoss() {
+    fieldGestures.clear();
+    keys.clear(); releaseTouchStick();
+    if (state === "playing") togglePause(true);
+    last = performance.now(); frameCarry = 0;
+  }
+  window.addEventListener("blur", suspendOnFocusLoss);
+  document.addEventListener("visibilitychange", () => { if (document.hidden) suspendOnFocusLoss(); });
   resize();
   setupTitleStoryScroll();
   resetGame();
