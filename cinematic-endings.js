@@ -99,7 +99,7 @@
       options={...nextOptions};data=scriptFor(options.stage,options.character,options.reason);
       if(window.innerWidth<=700 || typeof navigator!=="undefined"&&navigator.maxTouchPoints>0) data.chapters=data.chapters.map(c=>({...c,image:c.image.replace(".webp","-mobile.webp")}));
       q(".cinema-roll-song").textContent=data.track;q(".cinema-controls").append(resultButton);token++;active=true;paused=false;time=0;index=-1;progressMark=-1;
-      screen.classList.add("cinema-active");screen.dataset.endingStage=data.stage;panel.classList.remove("is-paused");pause.textContent="一時停止";resultButton.textContent="戦果へ";show(0);updateProgress();
+      screen.classList.add("cinema-active");screen.dataset.endingStage=data.stage;panel.classList.remove("is-paused");pause.textContent="一時停止";resultButton.textContent=options.returnLabel || "戦果へ";show(0);updateProgress();
     }
     function stop(){token++;imageToken++;active=false;paused=false;preload=null;screen.classList.remove("cinema-active");screen.append(resultButton);for(const image of images){image.onload=null;image.onerror=null;image.classList.remove("is-visible");image.removeAttribute("src");}}
     function update(dt){if(!active||paused||document.hidden)return;time=Math.min(duration(),time+Math.max(0,Math.min(dt,.2)));let next=0,at=0;for(const chapter of data.chapters){at+=chapter.duration;if(time>=at)next++;}if(next!==index)show(next);updateProgress();}

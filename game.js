@@ -250,6 +250,7 @@
   try { const savedMusic = Number(localStorage.getItem("nekoMushaMusic.v1") ?? 0.8); musicLevel = Number.isFinite(savedMusic) ? Math.max(0, Math.min(1, savedMusic)) : 0.8; } catch {}
   let state = "title";
   let encyclopediaReturnState = "title";
+  let endingReplayContext = null;
   let archiveViewer = null;
   let archiveAudio = null;
   let archiveAudioButton = null;
@@ -538,9 +539,21 @@
       selectedCharacter: "piimaru",
       unlockedCharacters: ["piimaru"],
       denkichiCleared: false,
+      endingRecords: {},
       shrineStats: defaultStats(),
       stats: defaultStats()
     };
+  }
+
+  function normalizeEndingRecords(records) {
+    const result = {};
+    for (const stage of ["sengoku", "shrine"]) {
+      const record = records?.[stage];
+      if (record && ["boss", "survive"].includes(record.reason)) result[stage] = {
+        reason:record.reason, character:record.character === "denkichi" ? "denkichi" : "piimaru"
+      };
+    }
+    return result;
   }
 
   function saveKeyForSlot(slot) {
@@ -571,6 +584,7 @@
         selectedCharacter: selected,
         unlockedCharacters: [...new Set(unlocked)],
         denkichiCleared: Boolean(parsed.denkichiCleared || Number(parsed.stats?.denkichiClears) > 0),
+        endingRecords: normalizeEndingRecords(parsed.endingRecords),
         shrineStats: normalizeStats(parsed.shrineStats || {}),
         stats: normalizeStats(parsed.stats || fallback.stats)
       };
@@ -2717,6 +2731,60 @@
     if (resumeMenu) startMenuBgm();
   }
 
+  function hasUnlockedEnding(stage) {
+    if (!["sengoku", "shrine"].includes(stage)) return false;
+    const stats = stage === "shrine" ? metaSave.shrineStats : metaSave.stats;
+    return Number(stats?.wins) > 0;
+  }
+
+  function renderEndingArchive() {
+    return ["sengoku", "shrine"].map(stage => {
+      const unlocked = hasUnlockedEnding(stage);
+      const shrine = stage === "shrine";
+      const name = shrine ? "雷雨の古社" : "戦国の夜";
+      return `<article class="ending-archive-card${unlocked ? "" : " is-locked"}">
+        ${unlocked ? `<img src="assets/endings/${shrine ? "shrine" : "sengoku"}-home-mobile.webp" alt="${name}のエンディング" loading="lazy">` : '<div class="ending-archive-locked" aria-hidden="true">未解放</div>'}
+        <div><p class="ending-archive-label">${shrine ? "二ノ陣" : "一ノ陣"} · ENDING</p><h3>${name}</h3>
+        <p>${unlocked ? "物語と登場人物紹介、スタッフロールをもう一度。" : "このステージをクリアすると解放されます。"}</p>
+        <button type="button" data-ending-replay="${stage}" ${unlocked ? "" : "disabled"}>${unlocked ? "エンディングを見る" : "クリアで解放"}</button></div></article>`;
+    }).join("");
+  }
+
+  function replayArchivedEnding(stage) {
+    if (state !== "encyclopedia" || !hasUnlockedEnding(stage)) return;
+    endingReplayContext = { activeStage, clearReason, clearCharacter };
+    const stats = stage === "shrine" ? metaSave.shrineStats : metaSave.stats;
+    const record = metaSave.endingRecords?.[stage] || { character:"piimaru", reason:Number(stats?.bestBossTime) > 0 ? "boss" : "survive" };
+    stopArchiveAudio({resumeMenu:false});
+    stopMenuBgm();
+    activeStage = stage;
+    clearReason = record.reason;
+    clearCharacter = record.character;
+    state = "ending";
+    gamepadChoiceIndex = 0;
+    encyclopediaScreen.classList.add("hidden");
+    selectEndingMusic();
+    cinematicEnding.start({stage, character:record.character, reason:record.reason, returnLabel:"図鑑へ戻る"});
+    showEndingScreenElement(true);
+    playEndingBgm();
+  }
+
+  function returnFromArchivedEnding() {
+    if (!endingReplayContext) return;
+    const previous = endingReplayContext;
+    endingReplayContext = null;
+    stopEndingBgm();
+    activeStage = previous.activeStage;
+    clearReason = previous.clearReason;
+    clearCharacter = previous.clearCharacter;
+    endingScreen.classList.add("hidden");
+    state = "encyclopedia";
+    gamepadChoiceIndex = 0;
+    encyclopediaScreen.classList.remove("hidden");
+    renderEncyclopedia("endings");
+    startMenuBgm();
+  }
+
   function renderEncyclopedia(tab = "items") {
     if (!encyclopediaList || !encyclopediaTabs) return;
     const cleared = hasClearedGame();
@@ -2727,6 +2795,8 @@
       button.classList.toggle("active", button.dataset.encyclopediaTab === tab);
     });
     encyclopediaList.classList.toggle("encyclopedia-archive-list", tab === "materials");
+    encyclopediaList.classList.toggle("ending-archive-list", tab === "endings");
+    if (tab === "endings") { encyclopediaList.innerHTML = renderEndingArchive(); return; }
     if (tab === "materials") {
       encyclopediaList.innerHTML = archiveAssets.map(encyclopediaArchiveCard).join("");
       return;
@@ -2913,6 +2983,10 @@
     runRewarded = true;
     if (testMode) return 0;
     const reward = calculateRunReward(win);
+    if (win) {
+      metaSave.endingRecords ||= {};
+      metaSave.endingRecords[activeStage] = { reason:reason === "boss" ? "boss" : "survive", character:player.character === "denkichi" ? "denkichi" : "piimaru" };
+    }
     metaSave.money += reward;
     if (activeStage === "shrine") {
       const stats = normalizeStats(metaSave.shrineStats);
@@ -4675,6 +4749,7 @@
   }
 
   function showEndingResult() {
+    if (endingReplayContext) { returnFromArchivedEnding(); return; }
     showResultScreen(lastResult || makeResult(true, clearReason, 0));
   }
 
@@ -8275,7 +8350,7 @@
     if (state === "shop") return Array.from(shopScreen.querySelectorAll("button"));
     if (state === "merchant") return Array.from(merchantScreen.querySelectorAll("button"));
     if (state === "records") return [recordsCloseButton];
-    if (state === "encyclopedia") return [...Array.from(encyclopediaTabs?.querySelectorAll("button") || []), encyclopediaCloseButton];
+    if (state === "encyclopedia") return [...Array.from(encyclopediaTabs?.querySelectorAll("button") || []).filter(button=>!button.hidden), ...Array.from(encyclopediaList?.querySelectorAll("[data-ending-replay]:not(:disabled)") || []), encyclopediaCloseButton];
     if (state === "gameover") return [restartButton];
     if (state === "ending") return cinematicEnding.active ? [...endingScreen.querySelectorAll(".cinema-controls button")].filter(button=>!button.disabled) : [endingRestartButton];
     if (state === "paused") return [resumeButton, pauseEncyclopediaButton, pauseTitleButton].filter(Boolean);
@@ -8355,6 +8430,9 @@
       event.preventDefault();
       if (!event.repeat) tryEvade();
       return;
+    }
+    if (event.code === "Escape" && endingReplayContext) {
+      event.preventDefault(); returnFromArchivedEnding(); return;
     }
     if (event.code === "Escape" && state === "stageSelect") {
       event.preventDefault();
@@ -8473,6 +8551,8 @@
     renderEncyclopedia(button.dataset.encyclopediaTab);
   });
   encyclopediaList?.addEventListener("click", event => {
+    const endingButton = event.target.closest("[data-ending-replay]");
+    if (endingButton) { event.preventDefault(); replayArchivedEnding(endingButton.dataset.endingReplay); return; }
     const audioButton = event.target.closest("[data-archive-audio]");
     if (audioButton) {
       event.preventDefault();
