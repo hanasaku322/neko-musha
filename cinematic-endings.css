@@ -1,0 +1,49 @@
+/* A quiet, image-led epilogue. Motion is limited to opacity and transforms. */
+.ending-screen.cinema-active{display:block;padding:0;background:#080e13;backdrop-filter:none;overflow:hidden;isolation:isolate}
+.cinema-active>.ending-image-viewport{display:none!important}
+.cinema{position:absolute;inset:0;color:#f8f1e2;background:#0c171d;overflow:hidden;font-family:'Yu Mincho','Hiragino Mincho ProN',serif}
+.cinema-art,.cinema-shot,.cinema-shade,.cinema-grain{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.cinema-shot{object-fit:cover;object-position:center 45%;opacity:0;transform:scale(1.035);transition:opacity 1.4s ease;animation:cinemaDrift 23s ease-out both;will-change:opacity,transform}
+.cinema-shot.is-visible{opacity:1}
+.cinema-shade{background:linear-gradient(0deg,rgba(4,10,14,.97) 0%,rgba(4,10,14,.72) 24%,rgba(4,10,14,.08) 65%,rgba(4,10,14,.45) 100%),linear-gradient(90deg,rgba(4,10,14,.48),transparent 75%)}
+.cinema-grain{opacity:.1;background:repeating-linear-gradient(0deg,transparent 0,transparent 3px,#12202b 4px);mix-blend-mode:soft-light}
+.cinema-header{position:absolute;top:max(24px,env(safe-area-inset-top));left:6vw;right:6vw;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #d4bb7c45;padding-bottom:12px;color:#e4d5b9;letter-spacing:.15em;font-size:12px}
+.cinema-brand{font-size:22px;letter-spacing:.22em}
+.cinema-caption{position:absolute;left:7vw;right:7vw;bottom:136px;max-width:780px;text-shadow:0 2px 14px #000b}
+.cinema-kicker{font:600 10px/1.6 'Segoe UI',sans-serif;letter-spacing:.2em;color:#cfb87e;margin:0 0 14px}
+.cinema-caption h2{font-size:clamp(24px,3.2vw,46px);font-weight:500;line-height:1.4;letter-spacing:.13em;margin:0 0 19px}
+.cinema-lines p{font-size:clamp(14px,1.45vw,21px);line-height:1.95;letter-spacing:.05em;margin:0 0 3px;white-space:pre-line}
+.cinema-lines .cinema-credits{font-size:12px;color:#c0c7c7;line-height:1.9;margin-top:18px;letter-spacing:.11em}
+.cinema-caption.is-entering{animation:cinemaWords 1.15s ease-out both}
+.cinema-dock{position:absolute;left:7vw;right:7vw;bottom:max(18px,env(safe-area-inset-bottom));font-family:'Segoe UI','Yu Gothic UI',sans-serif}
+.cinema-progress{height:2px;background:#cbd9d225;margin-bottom:16px;overflow:hidden}
+.cinema-progress i{display:block;width:100%;height:100%;background:#d8bd83;transform:scaleX(0);transform-origin:left;will-change:transform}
+.cinema-controls{display:flex;align-items:center;gap:8px}
+.cinema-count{font:11px/1 monospace;color:#d8caac;min-width:64px;letter-spacing:.12em}
+.cinema-controls button,.cinema-active .ending-restart{position:static;inset:auto;transform:none;margin:0;min-width:38px;min-height:36px;padding:7px 12px;border:1px solid #d5c49c59;border-radius:3px;background:#13232dbf;color:#f1e4ca;font-size:12px;font-weight:500;letter-spacing:.04em;box-shadow:none;touch-action:manipulation}
+.cinema-controls button:hover,.cinema-controls button:focus-visible{border-color:#eed9a7;background:#243742}
+.cinema-controls button:disabled{opacity:.3;cursor:default}
+.cinema-controls [data-cinema=prev],.cinema-controls [data-cinema=next],.cinema-controls [data-cinema=replay]{font-size:22px;line-height:1;padding:2px 9px}
+.cinema-controls [data-cinema=pause]{min-width:92px}
+.cinema-active .ending-restart{background:#cab17b;color:#152129;border-color:#e6d2a5;min-width:88px}
+.cinema-spacer{flex:1}
+.cinema-music{margin:12px 0 0;color:#a9b9bc;font-size:10px;letter-spacing:.12em}
+.cinema.is-paused .cinema-shot{animation-play-state:paused}
+.cinema.is-epilogue .cinema-caption h2{color:#efdbad}
+.ending-screen[data-ending-stage=shrine] .cinema-progress i{background:#9bd5cb}
+.ending-screen[data-ending-stage=shrine] .cinema-kicker{color:#b7dfd6}
+@keyframes cinemaDrift{from{transform:scale(1.035) translateY(0)}to{transform:scale(1.105) translateY(-1.2%)}}
+@keyframes cinemaWords{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+@media(max-width:700px) and (min-height:521px){
+ .cinema-art{height:60%}.cinema-shot{object-position:center 45%}.cinema-shade{background:linear-gradient(0deg,#08121a 0%,#08121a 33%,rgba(8,18,26,.75) 47%,transparent 73%,#08121a66 100%)}
+ .cinema-header{top:max(16px,env(safe-area-inset-top));left:6vw;right:6vw;font-size:9px}.cinema-brand{font-size:18px}
+ .cinema-caption{left:7vw;right:7vw;bottom:130px;max-width:none}.cinema-kicker{font-size:8px;margin-bottom:10px}.cinema-caption h2{font-size:25px;margin-bottom:13px;letter-spacing:.08em}
+ .cinema-lines p{font-size:14px;line-height:1.85;letter-spacing:.025em}.cinema-lines .cinema-credits{font-size:10px;line-height:1.7;margin-top:13px}
+ .cinema-dock{left:6vw;right:6vw;bottom:max(17px,env(safe-area-inset-bottom))}.cinema-count{min-width:43px;font-size:9px}.cinema-controls{gap:5px}.cinema-controls button,.cinema-active .ending-restart{padding:6px 8px;min-width:32px;min-height:36px;font-size:11px}.cinema-controls [data-cinema=pause]{min-width:75px}.cinema-active .ending-restart{min-width:65px}.cinema-music{font-size:8px;letter-spacing:.05em}.cinema-progress{margin-bottom:12px}
+ .cinema.is-epilogue .cinema-caption{bottom:132px}.cinema.is-epilogue .cinema-caption h2{font-size:23px}
+}
+@media(max-height:520px){.cinema-header{top:12px;padding-bottom:8px}.cinema-brand{font-size:16px}.cinema-caption{bottom:92px;max-width:70vw}.cinema-caption h2{font-size:22px;margin-bottom:9px}.cinema-kicker{margin-bottom:6px;font-size:8px}.cinema-lines p{font-size:12px;line-height:1.7}.cinema-lines .cinema-credits{font-size:10px;margin-top:6px}.cinema-dock{bottom:9px}.cinema-progress{margin-bottom:8px}.cinema-controls button,.cinema-active .ending-restart{min-height:30px}.cinema-music{margin-top:6px;font-size:8px}}
+@media(prefers-reduced-motion:reduce){.cinema-shot,.cinema-caption.is-entering{animation:none;transform:none}.cinema-shot{transition:opacity .15s}.cinema-grain{display:none}}
+
+.ending-screen:not(.cinema-active)>.cinema{display:none}
+.ending-screen.cinema-active.ending-fade-in{animation:none;opacity:1}

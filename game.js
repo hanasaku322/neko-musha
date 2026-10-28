@@ -63,6 +63,7 @@
   const enemyIntro = document.getElementById("enemyIntro");
   const bgmTrack = document.getElementById("bgmTrack");
   const endingBgmTrack = document.getElementById("endingBgmTrack");
+  const menuBgmTrack = document.getElementById("menuBgmTrack");
   const catMeowTrack = document.getElementById("catMeowTrack");
   const catPainTrack = document.getElementById("catPainTrack");
 
@@ -651,6 +652,11 @@
   const combatVfx = window.CombatVFX.create({ ctx, quality: () => perfMode.level });
   const heavyMotion = window.HeavyMotion;
   const sengokuWalk = window.SengokuWalk;
+  const cinematicEnding = window.CinematicEndings.create({
+    screen: endingScreen, resultButton: endingRestartButton,
+    onPause: paused => { if (SILENT_TEST) return; if (paused) endingBgmTrack.pause(); else playEndingBgm({ reset:false }); },
+    onReplay: () => playEndingBgm({ reset:true })
+  });
   const heavySheets = Object.fromEntries(["overlord", "oniElite", "support"].map(key => {
     const image = new Image(); image.src = `assets/characters/heavy-${key}-motion${navigator.maxTouchPoints > 0 ? "-mobile" : ""}.png`; return [key, image];
   }));
@@ -1262,7 +1268,9 @@
     { type: "image", group: "キャラ", name: "終焉の黒角王", src: "assets/characters/overlord.png", desc: "夜の果てに待つ最終ボス。" },
     { type: "audio", group: "BGM", name: "戦場曲", songTitle: "欠けた月の下で", src: "assets/bgm/field-theme.mp3", desc: "プレイフィールドで流れる曲。" },
     { type: "audio", group: "BGM", name: "古社曲", songTitle: "月下の刃", src: "assets/bgm/shrine-gekkano-yaiba.mp3", desc: "雷雨の古社で流れる専用曲。" },
-    { type: "audio", group: "BGM", name: "エンディング曲", songTitle: "片月のうた", src: "assets/bgm/ending-theme.mp3", desc: "エンディングで流れる曲。" }
+    { type: "audio", group: "BGM", name: "エンディング曲", songTitle: "片月のうた", src: "assets/bgm/ending-theme.mp3", desc: "エンディングで流れる曲。" },
+    { type:"audio", group:"BGM", name:"古社エンディング", songTitle:"あなたの「おかえり」", src:"assets/bgm/shrine-homecoming-ending.mp3", desc:"古社から帰る、二人の物語。" },
+    { type:"audio", group:"BGM", name:"図鑑・武器屋", songTitle:"三味線の音色", src:"assets/bgm/menu-shamisen.mp3", desc:"図鑑と武器屋で流れる曲。" }
   ];
 
   function scaledDamage(value) {
@@ -1994,6 +2002,31 @@
     voice.play().catch(() => {});
   }
 
+  function selectEndingMusic() {
+    const src=window.CinematicEndings.musicFor(activeStage);
+    if (endingBgmTrack.getAttribute("src") === src) return;
+    endingBgmTrack.pause();endingBgmTrack.src=src;endingBgmTrack.preload="none";
+    endingBgmPrimed=false;
+  }
+
+  function startCinematicEnding(reason) {
+    selectEndingMusic();
+    cinematicEnding.start({ stage:activeStage, character:player.character, reason });
+  }
+
+  function startMenuBgm() {
+    if (SILENT_TEST || !menuBgmTrack || !["shop","encyclopedia"].includes(state) || archiveAudio && !archiveAudio.paused) return;
+    bgmTrack?.pause();
+    menuBgmTrack.volume=.32*musicLevel;
+    menuBgmTrack.play().catch(()=>{});
+  }
+
+  function stopMenuBgm(reset=true) {
+    if (!menuBgmTrack) return;
+    menuBgmTrack.pause();
+    if(reset) { try { menuBgmTrack.currentTime=0; } catch {} }
+  }
+
   function playEndingBgm(options = {}) {
     if (SILENT_TEST) return null;
     if (!endingBgmTrack) return;
@@ -2004,7 +2037,7 @@
     }
     let attempts = 0;
     const tryPlay = () => {
-      if (state !== "ending" || !endingBgmTrack) return;
+      if (state !== "ending" || !endingBgmTrack || cinematicEnding.paused || document.hidden) return;
       attempts++;
       try {
         endingBgmTrack.muted = false;
@@ -2036,16 +2069,17 @@
   }
 
   function ensureEndingBgmPlaying() {
-    if (!endingBgmTrack || state !== "ending" || !endingBgmTrack.paused) return;
+    if (!endingBgmTrack || state !== "ending" || !endingBgmTrack.paused || cinematicEnding.paused || document.hidden) return;
     playEndingBgm({ reset: false });
   }
 
   function primeEndingBgm() {
     if (SILENT_TEST) return null;
+    selectEndingMusic();
     if (!endingBgmTrack || endingBgmPrimed) return;
     endingBgmPrimed = true;
     try {
-      endingBgmTrack.preload = "auto";
+      endingBgmTrack.preload = "metadata";
       endingBgmTrack.load();
       endingBgmTrack.muted = false;
       endingBgmTrack.volume = 0.48 * musicLevel;
@@ -2060,6 +2094,7 @@
   }
 
   function stopEndingBgm() {
+    cinematicEnding.stop();
     if (!endingBgmTrack) return;
     if (endingBgmRetryTimer) {
       clearTimeout(endingBgmRetryTimer);
@@ -2112,6 +2147,7 @@
   }
 
   function openStageSelect() {
+    stopMenuBgm();
     shrineStage.load();
     resetScreenZoomState();
     state = "stageSelect";
@@ -2130,9 +2166,10 @@
   }
 
   function startGame(options = {}) {
+    stopMenuBgm();
     configureStage(options.stage || (DEBUG_MODE ? URL_PARAMS.get("stage") : "sengoku"));
     stageScreen.classList.add("hidden");
-    testScenario = options.scenario || (DEBUG_MODE && URL_PARAMS.has("sengokuWalkTest") ? "sengokuWalk" : DEBUG_MODE && URL_PARAMS.has("shrineWalkTest") ? "shrineWalk" : DEBUG_MODE && URL_PARAMS.has("heavyTest") ? "heavy" : DEBUG_ENDGAME_TEST ? "endgame" : options.test ? "overlord" : "");
+    testScenario = options.scenario || (DEBUG_MODE && URL_PARAMS.has("endingPreview") ? "endingPreview" : DEBUG_MODE && URL_PARAMS.has("sengokuWalkTest") ? "sengokuWalk" : DEBUG_MODE && URL_PARAMS.has("shrineWalkTest") ? "shrineWalk" : DEBUG_MODE && URL_PARAMS.has("heavyTest") ? "heavy" : DEBUG_ENDGAME_TEST ? "endgame" : options.test ? "overlord" : "");
     testMode = !!testScenario || !!options.test;
     clearEndingFallbackTimer();
     clearEndingTransitionTimer();
@@ -2162,6 +2199,12 @@
     playCatVoice("meow", 0.42, true);
     last = performance.now();
     frameCarry = 0;
+    if (testScenario === "endingPreview") {
+      if (URL_PARAMS.get("endingCharacter") === "denkichi") player.character="denkichi";
+      clearReason=URL_PARAMS.get("endingReason") === "survive" ? "survive" : "boss";
+      clearCharacter=player.character;
+      showEndingForClear(clearReason,{fade:true});
+    }
   }
 
   function updateTitleMoney() {
@@ -2365,6 +2408,7 @@
   }
 
   function openRecords() {
+    stopMenuBgm();
     state = "records";
     gamepadChoiceIndex = 0;
     arrangeMenuCloseButtons();
@@ -2480,7 +2524,8 @@
       stopArchiveAudio();
       return;
     }
-    stopArchiveAudio();
+    stopArchiveAudio({resumeMenu:false});
+    stopMenuBgm(false);
     const card = button.closest(".archive-audio-card");
     const audioElement = card?.querySelector(".archive-audio-source") || new Audio(src);
     archiveAudio = audioElement;
@@ -2647,7 +2692,7 @@
     endingImage?.style.setProperty("--ending-pan-y", "0px");
   }
 
-  function stopArchiveAudio() {
+  function stopArchiveAudio({resumeMenu=true} = {}) {
     if (archiveAudio) {
       try {
         archiveAudio.pause();
@@ -2669,6 +2714,7 @@
     if (archiveAudioButton) archiveAudioButton.textContent = "再生";
     archiveAudio = null;
     archiveAudioButton = null;
+    if (resumeMenu) startMenuBgm();
   }
 
   function renderEncyclopedia(tab = "items") {
@@ -2766,18 +2812,21 @@
     recordsScreen.classList.add("hidden");
     encyclopediaScreen.classList.remove("hidden");
     renderEncyclopedia("items");
+    startMenuBgm();
   }
 
   function closeEncyclopedia() {
     gamepadChoiceIndex = 0;
-    stopArchiveAudio();
+    stopArchiveAudio({resumeMenu:false});
+    stopMenuBgm();
     encyclopediaScreen.classList.add("hidden");
     if (encyclopediaReturnState === "paused") {
       state = "paused";
       renderPausePanel();
       pauseScreen.classList.remove("hidden");
-      pauseButton.textContent = "謌ｻ繧・";
+      pauseButton.textContent = "戻る";
       if (audio) audio.duck(true);
+      if (audio && !SILENT_TEST) bgmTrack.play().catch(()=>{});
       return;
     }
     resetScreenZoomState();
@@ -2801,9 +2850,11 @@
     encyclopediaScreen.classList.add("hidden");
     shopScreen.classList.remove("hidden");
     renderShop();
+    startMenuBgm();
   }
 
   function closeShop() {
+    stopMenuBgm();
     resetScreenZoomState();
     state = "title";
     gamepadChoiceIndex = 0;
@@ -4195,6 +4246,7 @@
   }
 
   function showResultScreen(result) {
+    stopMenuBgm();
     state = "gameover";
     stopEndingBgm();
     pauseScreen.classList.add("hidden");
@@ -4211,6 +4263,7 @@
   }
 
   function returnToTitle() {
+    stopMenuBgm();
     stageScreen.classList.add("hidden");
     resetScreenZoomState();
     state = "title";
@@ -4393,19 +4446,12 @@
   }
 
   function finishShrineStage(reason) {
-    clearEndingFallbackTimer();
-    clearEndingTransitionTimer();
-    clearBossDefeatCutinTimers();
-    hideBossDefeatCutin();
-    shrineStage.clear();
-    const reward = grantRunReward(true, reason);
-    lastResult = lastResult || makeResult(true, reason, reward);
-    if (audio) audio.stop();
-    showResultScreen(lastResult);
+    clearEndingFallbackTimer();clearEndingTransitionTimer();clearBossDefeatCutinTimers();
+    hideBossDefeatCutin();shrineStage.clear();
+    showEndingForClear(reason,{fade:true});
   }
 
   function forceEndingScreen(reason = clearReason) {
-    if (activeStage === "shrine") return finishShrineStage(reason);
     state = "ending";
     clearEndingFallbackTimer();
     clearEndingTransitionTimer();
@@ -4424,7 +4470,7 @@
     merchantScreen?.classList.add("hidden");
     recordsScreen?.classList.add("hidden");
     encyclopediaScreen?.classList.add("hidden");
-    updateEndingImageForCharacter();
+    // Scene artwork is loaded by the cinematic ending.
     resetEndingZoom();
     hideBossDefeatCutin();
     showEndingScreenElement(false);
@@ -4433,11 +4479,13 @@
     } catch (error) {
       audio = null;
     }
+    startCinematicEnding(reason);
     playEndingBgm();
   }
 
   function showEndingForClear(reason = "survive", options = {}) {
-    if (activeStage === "shrine") return finishShrineStage(reason);
+    if (state === "ending" && cinematicEnding.active) return;
+    clearReason=reason;clearCharacter=player.character;
     clearEndingFallbackTimer();
     clearEndingTransitionTimer();
     state = "ending";
@@ -4459,7 +4507,7 @@
     encyclopediaScreen?.classList.add("hidden");
     if (upgradeChoices) upgradeChoices.innerHTML = "";
     if (pauseButton) pauseButton.textContent = "ステータス";
-    updateEndingImageForCharacter();
+    // Scene artwork is loaded by the cinematic ending.
     resetEndingZoom();
     hideBossDefeatCutin();
     showEndingScreenElement(!!options.fade);
@@ -4473,6 +4521,7 @@
     } catch (error) {
       audio = null;
     }
+    startCinematicEnding(reason);
     playEndingBgm();
   }
 
@@ -5907,6 +5956,7 @@
       return;
     }
     if (state === "ending") {
+      cinematicEnding.update(dt);
       endingBgmWatchTimer -= dt;
       if (endingBgmWatchTimer <= 0) {
         endingBgmWatchTimer = 1;
@@ -8033,7 +8083,7 @@
       // Keep simulation at 30 Hz; avoid drawing 120/144 times per second on phones.
       const renderMs = navigator.maxTouchPoints > 0 ? 1000 / (perfMode.level >= 2 ? 30 : 60) : 0;
       if (!renderMs || now - lastDraw + 0.01 >= renderMs) {
-        draw();
+        if (state !== "ending" || !cinematicEnding.active) draw();
         const gap = now - lastDraw;
         lastDraw = !Number.isFinite(gap) || gap > renderMs * 3 ? now : lastDraw + Math.floor((gap + 0.01) / renderMs) * renderMs;
       }
@@ -8227,7 +8277,7 @@
     if (state === "records") return [recordsCloseButton];
     if (state === "encyclopedia") return [...Array.from(encyclopediaTabs?.querySelectorAll("button") || []), encyclopediaCloseButton];
     if (state === "gameover") return [restartButton];
-    if (state === "ending") return [endingRestartButton];
+    if (state === "ending") return cinematicEnding.active ? [...endingScreen.querySelectorAll(".cinema-controls button")].filter(button=>!button.disabled) : [endingRestartButton];
     if (state === "paused") return [resumeButton, pauseEncyclopediaButton, pauseTitleButton].filter(Boolean);
     if (state === "level") return Array.from(upgradeChoices.querySelectorAll("button"));
     return [];
@@ -8407,6 +8457,7 @@
     if (button) startGame({ stage: button.dataset.stage });
   });
   if (DEBUG_ENDGAME_TEST) startButton.textContent = "終盤テスト";
+  if (DEBUG_MODE && URL_PARAMS.has("endingPreview")) startButton.textContent="エンディング確認";
   if (DEBUG_MODE && URL_PARAMS.has("heavyTest")) startButton.textContent = "大型モーション確認";
   if (DEBUG_MODE && URL_PARAMS.has("shrineWalkTest")) startButton.textContent = "古社の足運び確認";
   if (DEBUG_MODE && URL_PARAMS.has("sengokuWalkTest")) startButton.textContent = "戦国の足運び確認";
@@ -8486,12 +8537,15 @@
     musicLevel = Number(musicSlider.value) / 100;
     bgmTrack.volume = (state === "paused" ? 0.16 : 0.42) * musicLevel;
     endingBgmTrack.volume = 0.48 * musicLevel;
+    if(menuBgmTrack) menuBgmTrack.volume=.32*musicLevel;
     try { localStorage.setItem("nekoMushaMusic.v1", String(musicLevel)); } catch {}
   });
   function suspendOnFocusLoss() {
     fieldGestures.clear();
     keys.clear(); releaseTouchStick();
     if (state === "playing") togglePause(true);
+    if (state === "ending") endingBgmTrack.pause();
+    if (["shop","encyclopedia"].includes(state)) stopMenuBgm(false);
     last = performance.now(); frameCarry = 0;
   }
   window.addEventListener("blur", suspendOnFocusLoss);

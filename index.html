@@ -6,7 +6,7 @@
   <title>猫武者 - 戦国サバイバルアクション</title>
   <meta name="description" content="隻眼の猫武者となり、戦国の夜を生き抜くサバイバルアクション。妖怪や鬼を斬り伏せ、15分の死闘を生き残れ。">
   <meta name="theme-color" content="#08070b">
-  <meta name="build-version" content="2026-10-27-motion">
+  <meta name="build-version" content="2026-10-28-endings">
   <meta property="og:site_name" content="猫武者">
   <meta property="og:title" content="猫武者 - 戦国サバイバルアクション">
   <meta property="og:description" content="捨てられた一匹の猫が、武者となり戦国の夜を生き抜く。">
@@ -22,12 +22,14 @@
   <link rel="stylesheet" href="styles.css?v=20261027-motion">
   <link rel="stylesheet" href="stage-select.css?v=20261027-motion">
   <link rel="stylesheet" href="quality.css?v=20261027-motion">
+  <link rel="stylesheet" href="cinematic-endings.css?v=20261028-endings">
 </head>
 <body>
   <main class="shell">
     <audio id="bgmTrack" preload="none" loop>
       <source src="assets/bgm/field-theme.mp3" type="audio/mpeg">
     </audio>
+    <audio id="menuBgmTrack" src="assets/bgm/menu-shamisen.mp3" preload="none" loop></audio>
     <audio id="endingBgmTrack" preload="none" loop>
       <source src="assets/bgm/ending-theme.mp3" type="audio/mpeg">
     </audio>
@@ -167,7 +169,7 @@
 
     <section id="endingScreen" class="overlay ending-screen hidden">
       <div id="endingImageViewport" class="ending-image-viewport">
-        <img id="endingImage" src="assets/ending-neko-musha.webp" alt="猫武者 エンディング" draggable="false">
+        <img id="endingImage" data-fallback-src="assets/ending-neko-musha.webp" alt="猫武者 エンディング" draggable="false">
       </div>
       <button id="endingRestartButton" class="primary-button ending-restart">リザルトへ</button>
     </section>
@@ -231,6 +233,7 @@
   <script src="combat-vfx.js?v=20261027-motion"></script>
   <script src="heavy-motion.js?v=20261027-motion"></script>
   <script src="sengoku-walk.js?v=20261027-motion"></script>
-  <script src="game.js?v=20261027-motion"></script>
+  <script src="cinematic-endings.js?v=20261028-endings"></script>
+  <script src="game.js?v=20261028-endings"></script>
 </body>
 </html>
