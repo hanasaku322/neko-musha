@@ -47,3 +47,30 @@
 
 .ending-screen:not(.cinema-active)>.cinema{display:none}
 .ending-screen.cinema-active.ending-fade-in{animation:none;opacity:1}
+
+/* Credits use the same paused / hidden-aware clock as the story. */
+.cinema-roll,.cinema-final-card{display:none}
+.cinema.is-epilogue{background:#030405}
+.cinema.is-epilogue .cinema-art{height:100%;opacity:.2;transition:opacity 3s}
+.cinema.is-epilogue .cinema-shade{background:linear-gradient(0deg,#030405 0%,#03040555 45%,#030405aa 100%)}
+.cinema.is-epilogue .cinema-header,.cinema.is-epilogue .cinema-caption{display:none}
+.cinema.is-epilogue .cinema-roll{display:block;position:absolute;inset:0 0 108px;overflow:hidden;mask-image:linear-gradient(transparent,#000 12%,#000 88%,transparent)}
+.cinema-roll-track{position:absolute;top:100%;left:5%;width:90%;text-align:center;color:#f4efe4;will-change:transform;font-family:'Times New Roman',serif;letter-spacing:.12em}
+.cinema-roll-track section{min-height:38vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:50px 0;box-sizing:border-box}
+.cinema-roll-track p{margin:0;font-size:clamp(17px,2.5vw,34px);line-height:1.6;font-weight:400}
+.cinema-roll-track small{font-size:clamp(11px,1.2vw,16px);line-height:1.8;letter-spacing:.25em}
+.cinema.is-epilogue .cinema-final-card{display:block;position:absolute;inset:0 0 108px;align-content:center;text-align:center;opacity:0;transition:opacity 3s;font:clamp(20px,3vw,36px)/1.6 'Times New Roman',serif;letter-spacing:.12em}
+.cinema.is-epilogue.roll-complete .cinema-final-card{opacity:1}
+.cinema.is-epilogue.roll-complete .cinema-art{opacity:0}
+@media(max-width:700px){.cinema-roll-track section{min-height:34vh;gap:16px}.cinema-roll-track p{font-size:17px;letter-spacing:.07em}.cinema.is-epilogue .cinema-roll,.cinema.is-epilogue .cinema-final-card{bottom:120px}}
+@media(max-height:520px){.cinema-roll-track section{min-height:65vh}.cinema.is-epilogue .cinema-roll,.cinema.is-epilogue .cinema-final-card{bottom:88px}}
+
+.cinema-roll-track section{min-height:46vh}
+.cinema-cast-sprite{position:relative;width:148px;height:158px;margin:0 auto 12px;filter:drop-shadow(0 12px 18px #0009)}
+.cinema-cast-sprite img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0}
+.cinema-cast span{font:14px/2 'Yu Mincho','Hiragino Mincho ProN',serif;letter-spacing:.08em;color:#c6c6c1}
+.cinema-roll-track .cinema-cast{min-height:68vh;gap:12px}
+.cinema-cast p{font-family:'Yu Mincho','Hiragino Mincho ProN',serif;font-size:30px}
+@media(max-width:700px){.cinema-cast span{font-size:12px}.cinema-cast-sprite{width:125px;height:140px}.cinema-roll-track .cinema-cast{min-height:65vh}}
+
+.cinema-cast-sprite{background-image:url("assets/endings/cast-motion.webp");background-size:400% 200%;background-repeat:no-repeat;width:160px;height:160px}

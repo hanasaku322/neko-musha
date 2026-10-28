@@ -2037,7 +2037,7 @@
     }
     let attempts = 0;
     const tryPlay = () => {
-      if (state !== "ending" || !endingBgmTrack || cinematicEnding.paused || document.hidden) return;
+      if (state !== "ending" || !endingBgmTrack || cinematicEnding.paused || document.hidden || endingBgmTrack.ended && !reset) return;
       attempts++;
       try {
         endingBgmTrack.muted = false;
@@ -2069,7 +2069,7 @@
   }
 
   function ensureEndingBgmPlaying() {
-    if (!endingBgmTrack || state !== "ending" || !endingBgmTrack.paused || cinematicEnding.paused || document.hidden) return;
+    if (!endingBgmTrack || state !== "ending" || !endingBgmTrack.paused || endingBgmTrack.ended || cinematicEnding.paused || document.hidden) return;
     playEndingBgm({ reset: false });
   }
 
