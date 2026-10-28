@@ -66,14 +66,14 @@
 @media(max-height:520px){.cinema-roll-track section{min-height:65vh}.cinema.is-epilogue .cinema-roll,.cinema.is-epilogue .cinema-final-card{bottom:88px}}
 
 .cinema-roll-track section{min-height:46vh}
-.cinema-cast-sprite{position:relative;width:148px;height:158px;margin:0 auto 12px;filter:drop-shadow(0 12px 18px #0009)}
-.cinema-cast-sprite img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;opacity:0}
-.cinema-cast span{font:14px/2 'Yu Mincho','Hiragino Mincho ProN',serif;letter-spacing:.08em;color:#c6c6c1}
-.cinema-roll-track .cinema-cast{min-height:68vh;gap:12px}
-.cinema-cast p{font-family:'Yu Mincho','Hiragino Mincho ProN',serif;font-size:30px}
-@media(max-width:700px){.cinema-cast span{font-size:12px}.cinema-cast-sprite{width:125px;height:140px}.cinema-roll-track .cinema-cast{min-height:65vh}}
-
-.cinema-cast-sprite{background-image:url("assets/endings/cast-motion.webp");background-size:400% 200%;background-repeat:no-repeat;width:160px;height:160px}
+/* Cast rows keep sprite geometry fixed and put readable copy on the right. */
+.cinema-roll-track .cinema-cast{display:grid;grid-template-columns:200px minmax(0,1fr);align-items:center;justify-content:initial;gap:36px;min-height:260px;padding:24px 0;max-width:790px;margin:0 auto;text-align:left}
+.cinema-cast-sprite{display:block;width:200px;height:200px;background:none;filter:drop-shadow(0 10px 18px #0009)}
+.cinema-cast-copy{min-width:0}.cinema-cast-copy small{display:block;color:#bdb8ab;font:11px/1.8 'Yu Gothic',sans-serif;letter-spacing:.15em}
+.cinema-cast-copy p{font:28px/1.5 'Yu Mincho','Hiragino Mincho ProN',serif;margin:9px 0 12px;letter-spacing:.12em}
+.cinema-cast-copy span{display:block;font:15px/1.9 'Yu Mincho','Hiragino Mincho ProN',serif;letter-spacing:.04em;color:#d4d0c7;max-width:460px}
+@media(max-width:700px){.cinema-roll-track .cinema-cast{grid-template-columns:112px minmax(0,1fr);gap:15px;min-height:238px;padding:22px 0}.cinema-cast-sprite{width:112px;height:112px}.cinema-cast-copy p{font-size:20px;letter-spacing:.06em;margin:6px 0 9px}.cinema-cast-copy small{font-size:9px}.cinema-cast-copy span{font-size:12px;line-height:1.85}}
+@media(max-height:520px) and (min-width:701px){.cinema-roll-track .cinema-cast{min-height:220px;grid-template-columns:150px minmax(0,1fr);gap:28px;max-width:680px}.cinema-cast-sprite{width:150px;height:150px}.cinema-cast-copy p{font-size:23px}.cinema-cast-copy span{font-size:13px}}
 
 .ending-archive-list{grid-template-columns:repeat(2,minmax(0,1fr));align-content:start}
 .ending-archive-card{border:1px solid #c9ae6959;border-radius:9px;overflow:hidden;background:#0d121be8;color:#e9dfce}

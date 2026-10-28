@@ -33,9 +33,10 @@
       afterword:"帰れる場所がある。\nその灯りを、二人で守っていこう。"
     }
   };
+  const castDefinitions = {"sengoku": [{"id": "piimaru", "name": "ぴぃ丸", "label": "隻眼の猫武者", "desc": "拾われたぬくもりを、誰かを守る力に。小さな体に、折れない心を宿す。", "src": "assets/endings/cast-v2-piimaru.webp", "frames": 1, "motion": "idle"}, {"id": "denkichi", "name": "伝吉", "label": "ぴぃ丸の家族", "desc": "雨の中の小さな命を拾った、心優しき青年。帰りを待つ灯りが、二人の強さになる。", "src": "assets/endings/cast-v2-denkichi.webp", "frames": 1, "motion": "idle"}, {"id": "sengoku-wraith", "name": "怨霊", "label": "雑兵", "desc": "戦国の夜をさまよう怨念。群れとなり、生きる者のぬくもりを追う。", "src": "assets/endings/cast-v2-sengoku-wraith.webp", "frames": 1, "motion": "hover"}, {"id": "sengoku-ashigaru", "name": "落武者足軽", "label": "雑兵", "desc": "戦場に置き去りにされた亡者。古びた武具を構え、夜道をふさぐ。", "src": "assets/endings/cast-v2-sengoku-ashigaru.webp", "frames": 8, "motion": "walk"}, {"id": "sengoku-tengu", "name": "夜天狗", "label": "飛行敵", "desc": "闇の上空を舞う天狗。翼の音もなく、旅人の前へ降り立つ。", "src": "assets/endings/cast-v2-sengoku-tengu.webp", "frames": 1, "motion": "hover"}, {"id": "sengoku-shinobi", "name": "影忍", "label": "俊足敵", "desc": "夜陰に紛れる影の忍び。気配を消し、音もなく間合いを奪う。", "src": "assets/endings/cast-v2-sengoku-shinobi.webp", "frames": 8, "motion": "walk"}, {"id": "sengoku-armored", "name": "骸鬼", "label": "重装敵", "desc": "朽ちた鎧をまとった鬼。重い一歩が、戦場の静けさを砕く。", "src": "assets/endings/cast-v2-sengoku-armored.webp", "frames": 8, "motion": "walk"}, {"id": "sengoku-oniElite", "name": "青角王", "label": "中ボス", "desc": "青い角を掲げる大鬼。冷たい妖気をまとい、二人の前に立ちはだかる。", "src": "assets/endings/cast-v2-sengoku-oniElite.webp", "frames": 8, "motion": "walk"}, {"id": "sengoku-boss", "name": "赤角鬼将", "label": "中ボス", "desc": "赤い角の鬼将。身の丈ほどの武器を振るい、夜の軍勢を率いる。", "src": "assets/endings/cast-v2-sengoku-boss.webp", "frames": 8, "motion": "walk"}, {"id": "sengoku-overlord", "name": "終焉の黒角王", "label": "最終ボス", "desc": "戦国の夜を統べる鬼の王。その黒き角に、戦場の怨念が集う。", "src": "assets/endings/cast-v2-sengoku-overlord.webp", "frames": 8, "motion": "walk"}, {"id": "sengoku-senryoThief", "name": "千両泥棒", "label": "希少敵", "desc": "小判袋を抱えて駆ける泥棒。誰よりも目ざとく、誰よりも逃げ足が速い。", "src": "assets/endings/cast-v2-sengoku-senryoThief.webp", "frames": 8, "motion": "walk"}], "shrine": [{"id": "piimaru", "name": "ぴぃ丸", "label": "隻眼の猫武者", "desc": "拾われたぬくもりを、誰かを守る力に。小さな体に、折れない心を宿す。", "src": "assets/endings/cast-v2-piimaru.webp", "frames": 1, "motion": "idle"}, {"id": "denkichi", "name": "伝吉", "label": "ぴぃ丸の家族", "desc": "雨の中の小さな命を拾った、心優しき青年。帰りを待つ灯りが、二人の強さになる。", "src": "assets/endings/cast-v2-denkichi.webp", "frames": 1, "motion": "idle"}, {"id": "shrine-shikigami", "name": "破れ式神", "label": "古社の妖怪", "desc": "破れた札に宿る妖。群れを成して境内を漂う。", "src": "assets/endings/cast-v2-shrine-shikigami.webp", "frames": 1, "motion": "hover"}, {"id": "shrine-kappa", "name": "槍河童", "label": "古社の妖怪", "desc": "竹槍を携えた河童。横へ回り込みながら距離を詰める。", "src": "assets/endings/cast-v2-shrine-kappa.webp", "frames": 8, "motion": "walk"}, {"id": "shrine-lantern", "name": "化け提灯", "label": "古社の妖怪", "desc": "雨の中を跳ねる一つ目の提灯。揺れながら素早く迫る。", "src": "assets/endings/cast-v2-shrine-lantern.webp", "frames": 8, "motion": "walk"}, {"id": "shrine-kamaitachi", "name": "鎌鼬", "label": "古社の妖怪", "desc": "白い毛並みの鎌使い。接近すると一気に飛び込む。", "src": "assets/endings/cast-v2-shrine-kamaitachi.webp", "frames": 8, "motion": "walk"}, {"id": "shrine-stone", "name": "苔岩入道", "label": "古社の妖怪", "desc": "苔むす石が動き出した妖。重い体と高い耐久力を持つ。", "src": "assets/endings/cast-v2-shrine-stone.webp", "frames": 8, "motion": "walk"}, {"id": "shrine-monk", "name": "雷法師", "label": "古社の妖怪", "desc": "雷を呼ぶ修行僧。足元に刻まれる落雷の予兆に注意。", "src": "assets/endings/cast-v2-shrine-monk.webp", "frames": 8, "motion": "walk"}, {"id": "shrine-guardian", "name": "古社の荒守", "label": "古社の守護者", "desc": "大槌を振るう古社の守護者。重い足取りで追い詰める。", "src": "assets/endings/cast-v2-shrine-guardian.webp", "frames": 8, "motion": "walk"}, {"id": "shrine-raijin", "name": "天鼓の雷神", "label": "古社の主", "desc": "古社の雷雨を操る主。三つの雷印を結び、大地を撃つ。", "src": "assets/endings/cast-v2-shrine-raijin.webp", "frames": 1, "motion": "hover"}, {"id": "shrine-magpie", "name": "小判さらい", "label": "古社の妖怪", "desc": "小判袋を抱えた盗賊。すばしこく逃げるが、倒せば両を落とす。", "src": "assets/endings/cast-v2-shrine-magpie.webp", "frames": 8, "motion": "walk"}]};
   function scriptFor(stage, character, reason) {
     const def=definitions[stage] || definitions.sengoku;
-    return { ...def, stage:stage === "shrine" ? "shrine" : "sengoku",
+    return { ...def, cast:castDefinitions[stage] || castDefinitions.sengoku, stage:stage === "shrine" ? "shrine" : "sengoku",
       chapters:def.chapters.map((chapter,index)=>({ ...chapter,
         image:root+def.shots[index]+".webp",
         lines:index===0 ? chapter[reason === "survive" ? "survive" : "boss"] : character === "denkichi" && chapter.denkichi ? chapter.denkichi : chapter.lines
@@ -48,10 +49,10 @@
       <div class="cinema-shade"></div><div class="cinema-grain"></div>
       <header class="cinema-header"><span class="cinema-brand">猫武者</span><span class="cinema-stage"></span></header>
       <div class="cinema-caption" aria-live="polite" aria-atomic="true"><p class="cinema-kicker"></p><h2></h2><div class="cinema-lines"></div></div>
-      <div class="cinema-roll" aria-label="スタッフロール"><div class="cinema-roll-track"><section><p>HanaSaku ENTERTAINMENT</p><small>PRESENTS</small></section><section><small>DEVELOPED BY</small><p>HanaSaku PRODUCTIONS</p></section><section class="cinema-cast"><div class="cinema-cast-sprite" data-cast="hero-samurai"></div><small>隻眼の猫武者</small><p>ぴぃ丸</p><span>拾われたぬくもりを、誰かを守る力に。<br>小さな体に、折れない心を宿す。</span></section><section class="cinema-cast"><div class="cinema-cast-sprite" data-cast="denkichi"></div><small>ぴぃ丸の家族</small><p>伝吉</p><span>雨の中の小さな命を拾った、心優しき青年。<br>帰りを待つ灯りが、二人の強さになる。</span></section><section><small>ENDING MUSIC</small><p class="cinema-roll-song"></p></section><section><p>A HanaSaku GAME</p></section><section><p>HanaSaku©2026</p></section></div></div><div class="cinema-final-card">HanaSaku©2026</div><div class="cinema-dock"><div class="cinema-progress" role="progressbar" aria-label="物語の進行" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+      <div class="cinema-roll" aria-label="スタッフロール"><div class="cinema-roll-track"><section><p>HanaSaku ENTERTAINMENT</p><small>PRESENTS</small></section><section><small>DEVELOPED BY</small><p>HanaSaku PRODUCTIONS</p></section><div class="cinema-cast-list"></div><section><small>ENDING MUSIC</small><p class="cinema-roll-song"></p></section><section><p>A HanaSaku GAME</p></section><section><p>©2026 HanaSaku</p></section></div></div><div class="cinema-final-card">©2026 HanaSaku</div><div class="cinema-dock"><div class="cinema-progress" role="progressbar" aria-label="物語の進行" aria-valuemin="0" aria-valuemax="100"><i></i></div>
       <div class="cinema-controls"><span class="cinema-count"></span><button type="button" data-cinema="prev" aria-label="前の場面" title="前の場面">‹</button><button type="button" data-cinema="pause">一時停止</button><button type="button" data-cinema="next" aria-label="次の場面" title="次の場面">›</button><button type="button" data-cinema="replay" aria-label="最初から見る" title="最初から見る">↻</button><span class="cinema-spacer"></span></div><p class="cinema-music"></p></div>`;
     screen.prepend(panel);
-    const castSprites=[...panel.querySelectorAll("[data-cast]")];
+    let castSprites=[];
     const q=s=>panel.querySelector(s), images=[...panel.querySelectorAll(".cinema-shot")];
     const caption=q(".cinema-caption"), lines=q(".cinema-lines"), progress=q(".cinema-progress"), progressFill=q(".cinema-progress i"), pause=q('[data-cinema="pause"]');
 
@@ -84,10 +85,36 @@
       if(!final||!images[front].src.endsWith(chapter.image))setImage(chapter.image);
       preload=null;if(index+1<data.chapters.length){preload=new Image();preload.src=data.chapters[index+1].image;}
     }
+    function buildCast(){
+      for(const sprite of castSprites)if(sprite.image){sprite.image.onload=null;sprite.image.removeAttribute("src");}
+      q(".cinema-cast-list").innerHTML=data.cast.map(c=>`<section class="cinema-cast"><canvas class="cinema-cast-sprite" width="224" height="224" aria-hidden="true"></canvas><div class="cinema-cast-copy"><small>${c.label}</small><p>${c.name}</p><span>${c.desc}</span></div></section>`).join("");
+      castSprites=[...panel.querySelectorAll(".cinema-cast")].map((row,i)=>({row,canvas:row.querySelector("canvas"),def:data.cast[i],image:null}));
+    }
+    function drawCast(){
+      if(index!==data.chapters.length)return;
+      const view=q(".cinema-roll").getBoundingClientRect();
+      for(const sprite of castSprites){
+        const bounds=sprite.row.getBoundingClientRect();
+        if(bounds.bottom<view.top-250||bounds.top>view.bottom+250)continue;
+        if(!sprite.image){sprite.image=new Image();sprite.image.onload=()=>{if(active&&castSprites.includes(sprite))drawCast();};sprite.image.src=sprite.def.src;}
+        if(!sprite.image.complete||!sprite.image.naturalWidth)continue;
+        const frame=Math.floor(time*7)%sprite.def.frames;
+        const ctx=sprite.canvas.getContext("2d");
+        ctx.clearRect(0,0,224,224);ctx.save();
+        if(sprite.def.frames===1){
+          // One full-body pose: translation and a small sway only, never a changing scale.
+          const phase=time*(sprite.def.motion==="hover"?2.2:1.8);
+          ctx.translate(112,208+Math.sin(phase)*(sprite.def.motion==="hover"?3:1.2));
+          ctx.rotate(Math.sin(phase)*.008);ctx.translate(-112,-208);
+        }
+        // Explicit source rectangles isolate every frame, so a sword can never wrap into a neighbour.
+        ctx.drawImage(sprite.image,(frame%4)*224,Math.floor(frame/4)*224,224,224,0,0,224,224);ctx.restore();
+      }
+    }
     function updateProgress(){
       const roll=Math.max(0,Math.min(1,(time-storyDuration())/rollDuration()));
       const track=q(".cinema-roll-track");
-      for(const holder of castSprites){const count=holder.dataset.cast==="denkichi"?3:4;holder.style.backgroundPosition=`${Math.floor(time*6)%count/3*100}% ${count===3?100:0}%`;}
+      drawCast();
       const distance=track.offsetHeight+q(".cinema-roll").offsetHeight;
       track.style.transform=`translate3d(0,${-roll*distance}px,0)`;
       panel.classList.toggle("roll-complete",index===data.chapters.length&&roll>=1);
@@ -98,10 +125,10 @@
     function start(nextOptions){
       options={...nextOptions};data=scriptFor(options.stage,options.character,options.reason);
       if(window.innerWidth<=700 || typeof navigator!=="undefined"&&navigator.maxTouchPoints>0) data.chapters=data.chapters.map(c=>({...c,image:c.image.replace(".webp","-mobile.webp")}));
-      q(".cinema-roll-song").textContent=data.track;q(".cinema-controls").append(resultButton);token++;active=true;paused=false;time=0;index=-1;progressMark=-1;
+      buildCast();q(".cinema-roll-song").textContent=data.track;q(".cinema-controls").append(resultButton);token++;active=true;paused=false;time=0;index=-1;progressMark=-1;
       screen.classList.add("cinema-active");screen.dataset.endingStage=data.stage;panel.classList.remove("is-paused");pause.textContent="一時停止";resultButton.textContent=options.returnLabel || "戦果へ";show(0);updateProgress();
     }
-    function stop(){token++;imageToken++;active=false;paused=false;preload=null;screen.classList.remove("cinema-active");screen.append(resultButton);for(const image of images){image.onload=null;image.onerror=null;image.classList.remove("is-visible");image.removeAttribute("src");}}
+    function stop(){for(const sprite of castSprites)if(sprite.image){sprite.image.onload=null;sprite.image.removeAttribute("src");}castSprites=[];token++;imageToken++;active=false;paused=false;preload=null;screen.classList.remove("cinema-active");screen.append(resultButton);for(const image of images){image.onload=null;image.onerror=null;image.classList.remove("is-visible");image.removeAttribute("src");}}
     function update(dt){if(!active||paused||document.hidden)return;time=Math.min(duration(),time+Math.max(0,Math.min(dt,.2)));let next=0,at=0;for(const chapter of data.chapters){at+=chapter.duration;if(time>=at)next++;}if(next!==index)show(next);updateProgress();}
     return { start,stop,update,togglePause,jump,get active(){return active;},get paused(){return paused;},snapshot:()=>({active,paused,index,time,duration:duration(),stage:data?.stage}) };
   }
